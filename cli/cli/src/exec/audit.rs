@@ -29,12 +29,31 @@ fn today_utc_from(pinned: Option<String>) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{parse_locked_for_configured, today_utc_from, QueryBazel, AUDIT_TODAY_ENV};
+    use super::{
+        parse_locked_for_configured, today_utc_from, uncovered_message, QueryBazel, AUDIT_TODAY_ENV,
+    };
     use dx_adopt::dependency_sets::{Ecosystem, ResolvedSet};
     use dx_plan::resolve::{QueryResult, QueryRunner};
     use dx_tool_resolve::Bazel as _;
     use std::cell::RefCell;
     use std::path::Path;
+
+    #[test]
+    fn uncovered_message_names_its_set_and_ecosystem() {
+        let message = uncovered_message("tools", "uv");
+        assert_eq!(
+            message,
+            "failed to assess tools: no advisory backend for uv packages; accept it with an [[uncovered]] entry in security.toml"
+        );
+    }
+
+    #[test]
+    fn uncovered_message_for_powershell_is_unchanged() {
+        assert_eq!(
+            uncovered_message("powershell", "powershell"),
+            "failed to assess powershell: no advisory backend for PowerShell Gallery modules; NuGet.org advisories do not apply; accept it with an [[uncovered]] entry in security.toml"
+        );
+    }
 
     fn unreadable_lock_error(ecosystem: Ecosystem, lock: &str) -> String {
         let set = ResolvedSet {
@@ -1122,6 +1141,17 @@ fn run_secrets(
     }
 }
 
+fn uncovered_message(label: &str, ecosystem: &str) -> String {
+    let backend = if ecosystem == "powershell" {
+        "PowerShell Gallery modules; NuGet.org advisories do not apply".to_owned()
+    } else {
+        format!("{ecosystem} packages")
+    };
+    format!(
+        "failed to assess {label}: no advisory backend for {backend}; accept it with an [[uncovered]] entry in security.toml"
+    )
+}
+
 struct SecurityInputs<'a> {
     workspace: &'a Path,
     runner: &'a dyn dx_process::Runner,
@@ -1180,12 +1210,11 @@ fn collect_target(
         if packages.is_empty() || accepted_uncovered.contains(&label.as_str()) {
             return Ok(None);
         }
-        return Err((
-            CODE_AUDIT_FAILED,
-            format!(
-                "failed to assess {label}: no advisory backend for PowerShell Gallery modules; NuGet.org advisories do not apply; accept it with an [[uncovered]] entry in security.toml"
-            ),
-        ));
+        let ecosystem = match target {
+            AuditTarget::Builtin(set) => set.name(),
+            AuditTarget::Configured(set) => set.ecosystem.name(),
+        };
+        return Err((CODE_AUDIT_FAILED, uncovered_message(&label, ecosystem)));
     }
     let advisories = load_advisories(workspace, &key, &label, today).map_err(|error| {
         let wrapped = if offline {
