@@ -7,6 +7,10 @@ _RUST_POLICY = "//quality/testdata/rust_owned:policy"
 
 _DIALYZER = "//erlang/tools:dialyzer"
 
+_GO_POLICY = "//quality/testdata/go_owned:policy"
+
+_GO_TYPECHECK_POLICY = "//quality/testdata/go_owned:typecheck_policy"
+
 _NVCC_POLICY = "//quality/testdata/nvcc_syntax:policy"
 
 def _nvcc_case(name, contains, absent):
@@ -21,6 +25,22 @@ def _nvcc_case(name, contains, absent):
         "absent": absent,
         "linux_arm64": True,
         "windows_x86_64": True,
+    }
+
+def _go_case(tool, capability, kind, target, contains, absent, policy = _GO_POLICY):
+    return {
+        "name": "real_result_" + tool + "_" + kind,
+        "target": target,
+        "policy": policy,
+        "tool": tool,
+        "capability": capability,
+        "class": "go",
+        "contains": contains,
+        "absent": absent,
+        "linux_arm64": True,
+        "macos_arm64": True,
+        "windows_x86_64": True,
+        "windows_arm64": True,
     }
 
 REAL_RESULT_CASES = [
@@ -44,6 +64,12 @@ REAL_RESULT_CASES = [
         "contains": ["quality/testdata/zanuda_owned/dirty.ml", "if_bool", "list_length_comparisons"],
         "absent": [],
     },
+    _go_case("errcheck", "lint", "clean", "//go/tests/fixtures/errcheck:clean", ["errcheck"], ["unchecked error"]),
+    _go_case("errcheck", "lint", "dirty", "//go/tests/fixtures/errcheck:dirty", ["unchecked error"], []),
+    _go_case("govet", "lint", "clean", "//go/tests/fixtures/govet:clean", ["govet"], ["non-constant format string"]),
+    _go_case("govet", "lint", "dirty", "//go/tests/fixtures/govet:dirty", ["non-constant format string"], []),
+    _go_case("gotype", "typecheck", "clean", "//go/tests/fixtures/gotype:clean", ["gotype"], ["cannot use"], _GO_TYPECHECK_POLICY),
+    _go_case("gotype", "typecheck", "dirty", "//go/tests/fixtures/gotype:broken", ["cannot use"], [], _GO_TYPECHECK_POLICY),
     _nvcc_case("clean", ["nvcc_syntax/clean.cu"], ["__host__", "undefined", "declared but never"]),
     _nvcc_case("dirty", ["nvcc_syntax/dirty.cu", "__host__ function"], []),
     _nvcc_case("two_archs", ["nvcc_syntax/two_archs.cu", "177-D"], []),
