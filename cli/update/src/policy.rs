@@ -136,6 +136,7 @@ mod tests {
             latest: latest.into(),
             published: published.map(str::to_owned),
             prerelease: false,
+            repo: None,
         }
     }
 

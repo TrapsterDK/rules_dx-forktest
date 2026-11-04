@@ -42,8 +42,9 @@ pub fn outdated(
             }
         };
         let url = format!("{base}/modules/{name}/metadata.json");
-        match fetch.get(&url).and_then(|body| newest(&body, prereleases)) {
-            Ok(latest) => {
+        let body = fetch.get(&url);
+        match body.and_then(|body| Ok((newest(&body, prereleases)?, repo(&body)))) {
+            Ok((latest, repo)) => {
                 if compare_module_versions(&current, &latest) == Ordering::Less {
                     let prerelease = latest.contains('-');
                     found.candidates.push(Candidate {
@@ -53,6 +54,7 @@ pub fn outdated(
                         latest,
                         published: None,
                         prerelease,
+                        repo,
                     });
                 }
             }
@@ -60,6 +62,15 @@ pub fn outdated(
         }
     }
     found
+}
+
+fn repo(body: &str) -> Option<String> {
+    let metadata: serde_json::Value = serde_json::from_str(body).ok()?;
+    metadata["repository"]
+        .as_array()?
+        .iter()
+        .filter_map(|entry| entry.as_str())
+        .find_map(super::github_repo)
 }
 
 fn is_skipped(module: &ModuleFile, name: &str) -> bool {
@@ -90,6 +101,13 @@ mod tests {
     use super::*;
 
     const METADATA: &str = r#"{"versions":["1.0.0","1.2.0","2.0.0-rc1"],"yanked_versions":{}}"#;
+
+    #[test]
+    fn metadata_names_the_github_repository() {
+        let body = r#"{"repository":["https://gitlab.com/x/y","github:o/rules_x"],"versions":[]}"#;
+        assert_eq!(repo(body).as_deref(), Some("o/rules_x"));
+        assert_eq!(repo(METADATA), None);
+    }
 
     fn module(text: &str) -> ModuleFile {
         ModuleFile::parse(text).expect("parse")
@@ -135,6 +153,7 @@ mod tests {
                 latest: "1.2.0".into(),
                 published: None,
                 prerelease: false,
+                repo: None,
             }]
         );
         assert!(found.errors.is_empty());

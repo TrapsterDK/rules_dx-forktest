@@ -55,11 +55,11 @@ pub fn outdated(
             package: name.clone(),
             reason,
         };
-        let release = match fetch
-            .get(&format!("{base}/{name}/json"))
-            .and_then(|body| newest(&body, prereleases))
-        {
-            Ok(release) => release,
+        let (release, repo) = match fetch.get(&format!("{base}/{name}/json")).and_then(|body| {
+            let release = newest(&body, prereleases)?;
+            Ok((release, repo(&body)))
+        }) {
+            Ok(found) => found,
             Err(reason) => {
                 found.errors.push(error(reason));
                 continue;
@@ -80,6 +80,7 @@ pub fn outdated(
                     latest: release.0.to_string(),
                     published: release.1.clone(),
                     prerelease: release.0.any_prerelease(),
+                    repo: repo.clone(),
                 });
             }
         }
@@ -111,6 +112,22 @@ fn split(requirement: &str) -> Option<(String, String)> {
         return None;
     }
     Some((normalize(name), spec.to_owned()))
+}
+
+fn repo(body: &str) -> Option<String> {
+    let doc: serde_json::Value = serde_json::from_str(body).ok()?;
+    let urls = doc["info"]["project_urls"].as_object()?;
+    let mut keys: Vec<_> = urls.keys().collect();
+    keys.sort_by_key(|key| {
+        let key = key.to_lowercase();
+        ["source", "repository", "changelog"]
+            .iter()
+            .position(|word| key.contains(word))
+            .unwrap_or(usize::MAX)
+    });
+    keys.into_iter()
+        .filter_map(|key| urls[key].as_str())
+        .find_map(super::github_repo)
 }
 
 fn newest(body: &str, prereleases: bool) -> Result<(Version, Option<String>), String> {
@@ -226,6 +243,13 @@ test = ["grouped<3", { include-group = "dev" }]
         assert!(run(&["pre".to_owned()]).candidates.is_empty());
     }
 
+    #[test]
+    fn project_urls_prefer_source_over_the_homepage() {
+        let body = r#"{"info":{"project_urls":{"Homepage":"https://github.com/o/home","Source":"https://github.com/o/src"}}}"#;
+        assert_eq!(repo(body).as_deref(), Some("o/src"));
+        assert_eq!(repo(r#"{"info":{"project_urls":null}}"#), None);
+    }
+
     fn names(found: &Findings) -> Vec<&str> {
         found
             .candidates
@@ -252,6 +276,7 @@ test = ["grouped<3", { include-group = "dev" }]
             latest: "2.0".into(),
             published: Some("2026-01-02T00:00:00Z".into()),
             prerelease: false,
+            repo: None,
         }));
         assert!(names(&found).contains(&"grouped"));
     }

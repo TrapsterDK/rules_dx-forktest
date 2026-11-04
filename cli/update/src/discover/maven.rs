@@ -55,6 +55,7 @@ pub fn outdated(
                         latest,
                         published: None,
                         prerelease,
+                        repo: None,
                     });
                 }
             }
@@ -155,6 +156,7 @@ mod tests {
                 latest: "4.13.2".into(),
                 published: None,
                 prerelease: false,
+                repo: None,
             })
         );
         let lang = found

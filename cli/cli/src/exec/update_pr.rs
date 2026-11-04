@@ -709,6 +709,7 @@ mod tests {
                     latest: "2.0.0".into(),
                     published: None,
                     prerelease: false,
+                    repo: None,
                 },
                 registry: Registry::Crates,
             }],
@@ -1249,6 +1250,7 @@ mod tests {
                 latest: "2.0.0".into(),
                 published: None,
                 prerelease: false,
+                repo: None,
             },
             registry: Registry::Crates,
         };
