@@ -384,3 +384,35 @@ fn real_core_loads_no_rule_set() {
         outside.join("\n")
     );
 }
+
+const FAMILY_FILES: [&str; 3] = ["ansible", "cloudformation", "make"];
+
+#[test]
+fn family_files_define_aspects_listed_in_families_json() {
+    let json: serde_json::Value =
+        serde_json::from_str(&dx_testing::read_runfiles("modules/families.json")).expect("json");
+    let listed: BTreeSet<&str> = json["families"]
+        .as_object()
+        .expect("families")
+        .values()
+        .flat_map(|entry| entry["aspects"].as_array().expect("aspects"))
+        .map(|name| name.as_str().expect("aspect name"))
+        .collect();
+    for family in FAMILY_FILES {
+        let source = dx_testing::read_runfiles(&format!("quality/families/{family}.bzl"));
+        assert!(
+            !source.contains("load(\"//quality:families/"),
+            "{family}.bzl loads another family file"
+        );
+        let defined = source
+            .lines()
+            .filter_map(|line| line.split_once(" = "))
+            .filter(|(name, value)| name.ends_with("_aspect") && !value.starts_with('_'))
+            .map(|(name, _)| name)
+            .collect::<Vec<_>>();
+        assert!(!defined.is_empty(), "{family}.bzl defines no aspect");
+        for name in defined {
+            assert!(listed.contains(name), "{name} is not in families.json");
+        }
+    }
+}
