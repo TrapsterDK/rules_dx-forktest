@@ -230,7 +230,9 @@ every Monday at 04:00 UTC and on `workflow_dispatch`. Edit the `cron` line to
 change the schedule. Edit the flags on the last line to change what it opens.
 
 It works with the default token. PRs opened with the default token start no CI
-runs, so they cannot merge on required checks.
+runs, so they cannot merge on required checks. The default token cannot push workflow
+files, so it skips GitHub Actions pins. Use the app (Workflows read and write)
+to get them.
 
 To get CI on update PRs, create a GitHub App and set two secrets:
 
