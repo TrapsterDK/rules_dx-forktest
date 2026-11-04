@@ -1,0 +1,118 @@
+# gazelle:ignore
+load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@rules_rust//rust:defs.bzl", "rust_static_library")
+load("@rules_swift//swift:swift_interop_hint.bzl", "swift_interop_hint")
+load("@rules_shell//shell:sh_test.bzl", "sh_test")
+load("//apple/ios:app.bzl", "apple_ios_app", "apple_ios_app_test")
+load("//libs/starlark:failure_test.bzl", "failure_test")
+load("//swift/rules:defs.bzl", "swift_library")
+
+package(default_visibility = ["//apple/tests/swift_app:__subpackages__"])
+
+MACOS_ARM64 = [
+    "@platforms//cpu:arm64",
+    "@platforms//os:macos",
+]
+
+rust_static_library(
+    name = "ledger_rust",
+    srcs = ["ledger.rs"],
+    edition = "2021",
+    target_compatible_with = MACOS_ARM64,
+)
+
+swift_interop_hint(
+    name = "ledger_core_hint",
+    module_name = "LedgerCore",
+)
+
+cc_library(
+    name = "ledger_core",
+    hdrs = ["ledger.h"],
+    aspect_hints = [":ledger_core_hint"],
+    target_compatible_with = MACOS_ARM64,
+)
+
+swift_library(
+    name = "ledger_kit",
+    srcs = ["LedgerKit.swift"],
+    module_name = "LedgerKit",
+    target_compatible_with = MACOS_ARM64,
+)
+
+swift_library(
+    name = "ledger_xctests",
+    testonly = True,
+    srcs = ["LedgerAppTests.swift"],
+    module_name = "LedgerAppTests",
+    target_compatible_with = MACOS_ARM64,
+    deps = [
+        ":ledger_core",
+        ":ledger_kit",
+    ],
+)
+
+apple_ios_app(
+    name = "ledger_app",
+    bundle_id = "com.example.ledger",
+    deployment = "17.0",
+    entry = "//apple/tests/swift_app/main:ledger_main",
+    library = ":ledger_rust",
+    platforms = ["simulator/arm64"],
+    resources = ["entries.txt"],
+    tags = ["manual"],
+    version = "1.4",
+)
+
+apple_ios_app_test(
+    name = "ledger_app_test",
+    app = ":ledger_app",
+    deployment = "17.0",
+    device_type = "iPhone 16",
+    deps = [":ledger_xctests"],
+)
+
+sh_test(
+    name = "ipa_test",
+    srcs = ["ipa_test.sh"],
+    data = [":ledger_app"],
+    env = {"IPA": "$(rootpath :ledger_app)"},
+    target_compatible_with = MACOS_ARM64,
+)
+
+apple_ios_app(
+    name = "wrong_xcode_app",
+    bundle_id = "com.example.wrong",
+    deployment = "17.0",
+    entry = "//apple/tests/swift_app/main:ledger_main",
+    library = ":ledger_rust",
+    platforms = ["simulator/arm64"],
+    tags = ["manual"],
+    version = "1.0",
+    xcode_version = "9.9",
+)
+
+failure_test(
+    name = "wrong_xcode_test",
+    expected_failure_substring = "selects Xcode 9.9 but Bazel resolved",
+    target = ":wrong_xcode_app_selection",
+    target_compatible_with = MACOS_ARM64,
+)
+
+apple_ios_app(
+    name = "unsigned_device_app",
+    bundle_id = "com.example.device",
+    deployment = "17.0",
+    entry = "//apple/tests/swift_app/main:ledger_main",
+    library = ":ledger_rust",
+    platforms = ["device/arm64"],
+    tags = ["manual"],
+    version = "1.0",
+)
+
+failure_test(
+    name = "unsigned_device_test",
+    expected_failure_substring = "provisioning_profile",
+    target = ":unsigned_device_app_selection",
+    target_compatible_with = MACOS_ARM64,
+)

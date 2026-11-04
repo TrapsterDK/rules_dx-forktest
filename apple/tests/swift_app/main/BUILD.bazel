@@ -1,0 +1,17 @@
+# gazelle:ignore
+load("//swift/rules:defs.bzl", "swift_library")
+
+swift_library(
+    name = "ledger_main",
+    srcs = ["LedgerAppDelegate.swift"],
+    module_name = "LedgerApp",
+    target_compatible_with = [
+        "@platforms//cpu:arm64",
+        "@platforms//os:macos",
+    ],
+    visibility = ["//apple/tests/swift_app:__subpackages__"],
+    deps = [
+        "//apple/tests/swift_app:ledger_core",
+        "//apple/tests/swift_app:ledger_kit",
+    ],
+)

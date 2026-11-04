@@ -501,6 +501,18 @@ register_toolchains("//cc/toolchains:msvc_unsupported")
 
 register_toolchains("@llvm//toolchain:all")
 
+apple_cc_configure = use_extension(
+    "@apple_support//crosstool:setup.bzl",
+    "apple_cc_configure_extension",
+    dev_dependency = True,
+)
+use_repo(apple_cc_configure, "local_config_apple_cc_toolchains")
+
+register_toolchains(
+    "@local_config_apple_cc_toolchains//:all",
+    dev_dependency = True,
+)
+
 gcc = use_extension("//cc/toolchains:repos.bzl", "gcc")
 use_repo(gcc, "dx_gcc_linux_aarch64", "dx_gcc_linux_aarch64_cross", "dx_gcc_linux_x86_64")
 
@@ -1088,6 +1100,7 @@ rust = use_extension("@rules_rust//rust:extensions.bzl", "rust")
 rust.toolchain(
     edition = "2021",
     extra_target_triples = [
+        "aarch64-apple-ios-sim",
         "aarch64-linux-android",
         "aarch64-unknown-linux-gnu",
         "wasm32-unknown-unknown",
