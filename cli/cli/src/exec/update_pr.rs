@@ -292,6 +292,35 @@ fn program(program: &Path, root: &Path, args: &[&str]) -> Result<String, String>
     Ok(String::from_utf8_lossy(&output.stdout).into_owned())
 }
 
+const WORKFLOW_SKIP: &str = "skipped: token cannot push workflow files";
+
+fn refused_workflow(stderr: &str) -> bool {
+    let text = stderr.to_lowercase();
+    text.contains("refusing to allow") && text.contains("workflow")
+}
+
+fn push(tools: &Tools, root: &Path, branch: &str) -> Result<bool, String> {
+    let args = ["push", "--force-with-lease", "origin", branch];
+    let output = Command::new(&tools.git)
+        .args(args)
+        .current_dir(root)
+        .output()
+        .map_err(|error| format!("{} {}: {error}", tools.git.display(), args.join(" ")))?;
+    if output.status.success() {
+        return Ok(true);
+    }
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    if refused_workflow(&stderr) {
+        return Ok(false);
+    }
+    Err(format!(
+        "{} {} failed: {}",
+        tools.git.display(),
+        args.join(" "),
+        tail(&stderr)
+    ))
+}
+
 fn publish(
     root: &Path,
     tools: &Tools,
@@ -338,7 +367,11 @@ fn publish(
             rules,
         };
         let result = publish_one(root, tools, group, labels, &ctx, step);
-        if result.is_ok() && existing.is_none() {
+        if existing.is_none()
+            && result
+                .as_ref()
+                .is_ok_and(|text| !text.starts_with("skipped:"))
+        {
             open.push((0, group.branch.clone()));
         }
         if result.is_err() {
@@ -485,7 +518,9 @@ fn publish_one(
             return Ok(format!("unchanged #{number}"));
         }
     }
-    git(&["push", "--force-with-lease", "origin", branch])?;
+    if !push(tools, root, branch)? {
+        return Ok(WORKFLOW_SKIP.to_owned());
+    }
     let gh = |args: &[&str]| program(&tools.gh, root, args);
     let merge = automerge(rules.automerge, group);
     if let Some(number) = existing {
@@ -547,6 +582,10 @@ mod tests {
     }
 
     fn fixture(list_output: &str) -> Fixture {
+        fixture_with_hook(list_output, None)
+    }
+
+    fn fixture_with_hook(list_output: &str, hook: Option<&str>) -> Fixture {
         let dir = super::super::test_support::temp_dir("update-pr");
         let origin = dir.path().join("origin.git");
         let work = dir.path().join("work");
@@ -566,6 +605,22 @@ mod tests {
             &["remote", "add", "origin", origin.to_str().expect("utf8")],
         );
         sh(&work, &["push", "-q", "origin", "main"]);
+        if let Some(message) = hook {
+            let path = origin.join("hooks/pre-receive");
+            std::fs::write(
+                &path,
+                format!(
+                    "#!/bin/sh\nwhile read old new ref; do\n  if [ \"$ref\" = refs/heads/dx-update/github-actions ]; then\n    echo '{message}' >&2\n    exit 1\n  fi\ndone\n"
+                ),
+            )
+            .expect("hook");
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755))
+                    .expect("chmod");
+            }
+        }
         let argv = dir.path().join("gh-argv");
         let script = dir.path().join("gh");
         std::fs::write(
@@ -876,6 +931,115 @@ mod tests {
         assert_eq!(second[0].result, Ok("unchanged #7".into()));
         let argv = std::fs::read_to_string(&fx.argv).expect("argv");
         assert_eq!(argv.matches("pr edit").count(), 1);
+    }
+
+    fn two_plans() -> Vec<GroupPlan> {
+        let item = |set: &str, package: &str| Item {
+            candidate: Candidate {
+                set: set.into(),
+                package: package.into(),
+                current: "1.0.0".into(),
+                latest: "2.0.0".into(),
+                published: None,
+            },
+            registry: Registry::Crates,
+        };
+        plan(
+            &[
+                item("cargo", "serde"),
+                item("github-actions", "actions/checkout"),
+            ],
+            Group::Set,
+        )
+    }
+
+    fn two_scope() -> Scope {
+        Scope::new(
+            Group::Set,
+            false,
+            vec!["cargo".into(), "github-actions".into()],
+            Vec::new(),
+        )
+    }
+
+    #[test]
+    fn a_workflow_push_refusal_skips_the_group() {
+        let fx = fixture_with_hook(
+            "[]",
+            Some("refusing to allow a GitHub App to create or update workflow `.github/workflows/ci.yml` without `workflows` permission"),
+        );
+        let mut step = editing(fx.work.clone(), None);
+        let got = publish(
+            &fx.work,
+            &fx.tools,
+            &two_plans(),
+            &two_scope(),
+            &[],
+            &rules(),
+            &mut step,
+        )
+        .expect("publish");
+        let skipped = got
+            .iter()
+            .find(|o| o.branch == "dx-update/github-actions")
+            .expect("outcome");
+        assert_eq!(skipped.result, Ok(WORKFLOW_SKIP.into()));
+        let opened = got
+            .iter()
+            .find(|o| o.branch == "dx-update/cargo")
+            .expect("outcome");
+        assert!(opened
+            .result
+            .as_ref()
+            .is_ok_and(|t| t.starts_with("opened")));
+        let argv = std::fs::read_to_string(&fx.argv).expect("argv");
+        assert!(!argv.contains("--head dx-update/github-actions"));
+        let remote = sh(&fx.origin, &["branch", "--list"]);
+        assert!(!remote.contains("github-actions"));
+        assert_eq!(
+            sh(&fx.work, &["rev-parse", "--abbrev-ref", "HEAD"]).trim(),
+            "main"
+        );
+        let mut out = Vec::new();
+        emit(&mut out, &got, false, 0).expect("emit");
+        assert!(String::from_utf8_lossy(&out)
+            .contains("dx-update/github-actions: skipped: token cannot push workflow files"));
+    }
+
+    #[test]
+    fn other_push_rejections_still_fail() {
+        let fx = fixture_with_hook("[]", Some("denied by policy"));
+        let mut step = editing(fx.work.clone(), None);
+        let got = publish(
+            &fx.work,
+            &fx.tools,
+            &two_plans(),
+            &two_scope(),
+            &[],
+            &rules(),
+            &mut step,
+        )
+        .expect("publish");
+        let failed = got
+            .iter()
+            .find(|o| o.branch == "dx-update/github-actions")
+            .expect("outcome");
+        assert!(failed.result.is_err());
+    }
+
+    #[test]
+    fn recognizes_workflow_refusals() {
+        assert!(refused_workflow(
+            "! [remote rejected] x (refusing to allow a GitHub App to create or update workflow `a.yml` without `workflows` permission)"
+        ));
+        assert!(refused_workflow(
+            "refusing to allow an OAuth App to create or update workflow `a.yml` without `workflow` scope"
+        ));
+        assert!(refused_workflow(
+            "refusing to allow a Personal Access Token to create or update workflow `a.yml` without `workflow` scope"
+        ));
+        assert!(!refused_workflow("denied by policy"));
+        assert!(!refused_workflow("refusing to allow deletion"));
     }
 
     #[test]

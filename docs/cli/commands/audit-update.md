@@ -517,7 +517,10 @@ the level, `dx update --pr` turns auto-merge off for it.
 Each skipped package prints `skipped <set>:<package> <old> -> <new>: <reason>`
 with the reason `ignored`, `major` or `too new`. In JSON it is a notice with
 code `update_pr_skipped`. A group over `--max-prs` prints
-`skipped: --max-prs=<n> reached` and does not change the exit code.
+`skipped: --max-prs=<n> reached` and does not change the exit code. When the
+push is refused because the token cannot change workflow files, the group
+prints `skipped: token cannot push workflow files` and the exit code does not
+change. With `--group=all`, the whole group is skipped.
 
 For each group, `dx update --pr` does this:
 
