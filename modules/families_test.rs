@@ -292,3 +292,17 @@ mod tests {
         assert_eq!(gazelle_languages(build), set(&["//gazelle/go"]));
     }
 }
+
+#[test]
+fn real_core_loads_no_rule_set() {
+    let core = dx_testing::read_runfiles("quality/real_core.bzl");
+    let outside: Vec<&str> = core
+        .lines()
+        .filter(|line| line.contains("load(\"@") && !line.contains("load(\"@bazel_skylib"))
+        .collect();
+    assert!(
+        outside.is_empty(),
+        "quality/real_core.bzl may only load @bazel_skylib from outside the repo:\n{}",
+        outside.join("\n")
+    );
+}

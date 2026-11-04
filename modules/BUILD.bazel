@@ -60,6 +60,7 @@ rust_test(
         "//:MODULE.bazel",
         "//gazelle/dispatch:BUILD.bazel",
         "//quality:real_aspects.bzl",
+        "//quality:real_core.bzl",
     ],
     tags = [
         "external",

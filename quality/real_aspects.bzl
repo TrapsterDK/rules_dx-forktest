@@ -6,52 +6,43 @@ load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 load("@rules_dotnet//dotnet/private:providers.bzl", "DotnetAssemblyRuntimeInfo")
 load("@rules_go//go:def.bzl", "GoArchive")
 load("@rules_java//java/common:java_info.bzl", "JavaInfo")
+load("@rules_julia//julia:julia_info.bzl", "JuliaInfo")
 load("@rules_powershell//powershell:defs.bzl", _PwshInfo = "PwshInfo")
 load("@rules_proto//proto:defs.bzl", "ProtoInfo")
 load("@rules_ruby//ruby/private:providers.bzl", "RubyFilesInfo")
 load("@rules_rust//rust:defs.bzl", "rust_clippy_aspect", _rust_common = "rust_common")
 load("@rules_scala//scala:semanticdb_provider.bzl", "SemanticdbInfo")
-load("//fsharp/rules:symbols.bzl", "fsharp_compile_defines")
-load("//helm/rules:providers.bzl", "HelmChartInfo")
-load("//terraform/rules:providers.bzl", "TerraformModuleInfo")
-load("//libs/starlark:resources.bzl", "DX_QUALITY_TIERS", "dx_quality_resource_set")
-load(
-    "//quality:adapters.bzl",
-    "REAL_ADAPTERS",
-    "REAL_CLASS_TO_FAMILY",
-)
-load("//quality:dart_context.bzl", "DART_ANALYZE", "DART_FORMAT", "dart_external_root", "dart_merge_packages", "dart_package_entries", "dart_pubspec_stubs")
-load("//quality:execution_requirements.bzl", "dx_stage_execution_requirements")
-load("//quality:native_config.bzl", "DxDartConfigInfo", "DxNativeConfigInfo", "collect_native_configs", "native_config_scratch_rel", "missing_required_config_error")
-load("//quality:parity_tests.bzl", "deferred_pipeline_error")
-load("//quality:pipeline.bzl", "aspect_capability_blocked", "aspect_direct_maps", "aspect_family_selections", "drop_pipeline_tool", "filter_pipeline_by_tools", "generated_source_paths", "ordered_pipeline_paths", "pipeline_inputs_for_paths", "prune_tool_generated_sources", "real_request_doc", "real_request_mapping", "real_request_stage", "real_request_tool", "real_request_tool_env", "real_request_tool_file", "resolve_pipeline")
-load("//quality:policy.bzl", "QualityPolicyInfo", "family_section_error")
-load("//quality:clang_syntax.bzl", "ClangSyntaxInfo", "clang_syntax_aspect")
-load("//quality:nvcc_syntax.bzl", "NvccSyntaxInfo", "nvcc_syntax_aspect")
-load("//quality:compile_check.bzl", "COMPILE_CHECK_TOOLS", "CompileCheckInfo", "compile_check_aspect")
-load("//quality:fsc.bzl", "FscInfo", "FscUnsupportedInfo", "fsc_aspect")
-load("//quality:roslyn.bzl", "RoslynInfo", "roslyn_aspect")
-load("//quality:go_analysis.bzl", "GO_TOOLCHAIN_TYPE", "GoAnalysisInfo", "go_analysis_aspect", "go_lang_version")
-load("//quality:jvm_check.bzl", "JvmCheckInfo", "jvm_check_aspect")
-load("//quality:tsc.bzl", "TscInfo", "tsc_aspect")
+load("//avro/rules:defs.bzl", "AvroInfo")
+load("//bicep/rules:providers.bzl", "BicepInfo")
+load("//capnproto/rules:defs.bzl", "CapnpInfo")
 load("//dart/rules:providers.bzl", "DartAnalyzableInfo", "DartInfo")
 load("//erlang/rules:providers.bzl", "BeamInfo", "DialyzerToolInfo")
-load("//avro/rules:defs.bzl", "AvroInfo")
-load("//capnproto/rules:defs.bzl", "CapnpInfo")
 load("//flatbuffers/rules:defs.bzl", "FlatBuffersInfo")
-load("//thrift/rules:defs.bzl", "ThriftInfo")
+load("//fsharp/rules:symbols.bzl", "fsharp_compile_defines")
+load("//helm/rules:providers.bzl", "HelmChartInfo")
 load("//lua/private:providers.bzl", "LuaInfo")
 load("//ocaml/rules:providers.bzl", "OCamlCmtInfo")
 load("//php/rules:php.bzl", "staged_path")
 load("//php/rules:providers.bzl", "PhpInfo")
-load("//quality:sources.bzl", "QualitySourcesInfo", "QualityToolsInfo", "check_direct_sources", "upstream_source_class")
-load("//quality:support.bzl", "support_unpinned_tools")
-load("@rules_julia//julia:julia_info.bzl", "JuliaInfo")
-load("//bicep/rules:providers.bzl", "BicepInfo")
+load("//quality:clang_syntax.bzl", "ClangSyntaxInfo", "clang_syntax_aspect")
+load("//quality:compile_check.bzl", "COMPILE_CHECK_TOOLS", "CompileCheckInfo", "compile_check_aspect")
+load("//quality:dart_context.bzl", "DART_ANALYZE", "DART_FORMAT", "dart_external_root", "dart_merge_packages", "dart_package_entries", "dart_pubspec_stubs")
+load("//quality:fsc.bzl", "FscInfo", "FscUnsupportedInfo", "fsc_aspect")
+load("//quality:go_analysis.bzl", "GO_TOOLCHAIN_TYPE", "GoAnalysisInfo", "go_analysis_aspect", "go_lang_version")
+load("//quality:jvm_check.bzl", "JvmCheckInfo", "jvm_check_aspect")
+load("//quality:native_config.bzl", "DxDartConfigInfo")
+load("//quality:nvcc_syntax.bzl", "NvccSyntaxInfo", "nvcc_syntax_aspect")
+load("//quality:pipeline.bzl", "drop_pipeline_tool", "generated_source_paths", "prune_tool_generated_sources", "real_request_tool_env")
+load("//quality:real_core.bzl", "real_config", "real_context", "real_make_aspect", "real_make_probe_aspect", "real_upstream_direct_sources", _RealShardProbeInfo = "RealShardProbeInfo", _real_policy_error = "real_policy_error", _real_quality_resource_set = "real_quality_resource_set", _real_shard_result_stems = "real_shard_result_stems", _real_tool_table_error = "real_tool_table_error", _real_tool_table_shape_error = "real_tool_table_shape_error", _real_wired_capabilities = "real_wired_capabilities", _real_wired_tools = "real_wired_tools")
+load("//quality:roslyn.bzl", "RoslynInfo", "roslyn_aspect")
+load("//quality:sources.bzl", "QualityToolsInfo")
+load("//quality:tsc.bzl", "TscInfo", "tsc_aspect")
 load("//rego/rules:providers.bzl", "RegoInfo")
 load("//rust/rules:edition.bzl", "RUST_EDITION")
 load("//rust/toolchains:bindings.bzl", "RUST_TOOLCHAIN_TYPE", "rust_toolchain_rustc", "rust_toolchain_toolchains", "rust_toolchain_tools")
 load("//sql/rules:providers.bzl", "SqlDialectInfo")
+load("//terraform/rules:providers.bzl", "TerraformModuleInfo")
+load("//thrift/rules:defs.bzl", "ThriftInfo")
 
 _REAL_TOOL_TABLE = {
     "biome": {
@@ -979,23 +970,6 @@ _JVM_CHECK_TOOLS = ["javac", "kotlinc", "scalac"]
 
 _GO_ANALYSIS_TOOLS = ["errcheck", "gotype", "govet", "staticcheck"]
 
-_REAL_TOOL_KINDS = ["executable", "file", "setting", "toolchain", "upstream"]
-
-_REAL_TOOLCHAIN_FILES = ["clippy_driver", "rustc", "rustfmt"]
-
-def _shard_tools(shard, capability):
-    """Lists wired tools for one shard and capability, or for every capability when capability is None."""
-    return sorted([tool for tool in _REAL_TOOL_TABLE if _REAL_TOOL_TABLE[tool]["shard"] == shard and (capability == None or capability in _REAL_TOOL_TABLE[tool]["capabilities"])])
-
-_WIRED_TOOLS = {
-    capability: sorted([tool for tool in _REAL_TOOL_TABLE if capability in _REAL_TOOL_TABLE[tool]["capabilities"]])
-    for capability in ["format", "lint", "typecheck"]
-}
-
-def real_wired_tools():
-    """Maps each capability to the sorted tool names the table wires for it."""
-    return {capability: list(tools) for capability, tools in _WIRED_TOOLS.items()}
-
 def rustc_diagnostics_group(groups):
     """Returns the rustc diagnostics output group to read, preferring the metadata build."""
     for name in ["rustc_rmeta_output", "rustc_output"]:
@@ -1025,68 +999,6 @@ def merge_inherited_sources(direct_sources, inherited, class_id):
     if added:
         merged[class_id] = merged.get(class_id, []) + added
     return {k: depset(v) for k, v in merged.items()}
-
-def real_policy_error(policy, capability, what):
-    """Validates the selected workspace policy for one real capability."""
-    unpinned = support_unpinned_tools(capability)
-    for family_id in sorted(policy.families.keys()):
-        section = policy.families[family_id]
-        error = family_section_error(
-            family_id,
-            capability,
-            getattr(section, capability),
-            section.disabled,
-            _WIRED_TOOLS[capability],
-            unpinned,
-        )
-        if error != "":
-            return what + ": " + error
-    return ""
-
-def upstream_direct_sources(target, ctx):
-    """Derives directly owned sources for an ordinary upstream native target."""
-    is_rust = _rust_common.crate_info in target or _rust_common.test_crate_info in target
-    is_cc = CcInfo in target
-    is_proto = ProtoInfo in target
-    if not is_rust and not is_cc and not is_proto:
-        return (False, {}, "")
-    files = []
-    if is_proto:
-        proto_srcs = getattr(ctx.rule.files, "srcs", None)
-        if proto_srcs == None:
-            return (True, {}, "upstream proto target has no readable srcs; unsupported ownership is unchecked, not clean")
-        files.extend(proto_srcs)
-    if is_rust:
-        rust_srcs = getattr(ctx.rule.files, "srcs", None)
-        if rust_srcs == None:
-            return (True, {}, "upstream rust target has no readable srcs; unsupported ownership is unchecked, not clean")
-        files.extend(rust_srcs)
-    if is_cc:
-        cc_srcs = getattr(ctx.rule.files, "srcs", None)
-        cc_hdrs = getattr(ctx.rule.files, "hdrs", None)
-        cc_non_arc_srcs = getattr(ctx.rule.files, "non_arc_srcs", None)
-        if cc_srcs == None and cc_hdrs == None and cc_non_arc_srcs == None:
-            return (True, {}, "upstream cc target has no readable srcs, hdrs or non_arc_srcs; unsupported ownership is unchecked, not clean")
-        if cc_srcs != None:
-            files.extend(cc_srcs)
-        if cc_hdrs != None:
-            files.extend(cc_hdrs)
-        if cc_non_arc_srcs != None:
-            files.extend(cc_non_arc_srcs)
-    buckets = {}
-    for f in files:
-        if not f.is_source:
-            continue
-        class_id = upstream_source_class(f.extension)
-        if class_id == "":
-            continue
-        buckets.setdefault(class_id, []).append(f)
-    direct_sources = {}
-    for class_id in buckets.keys():
-        if len(buckets[class_id]) > 0:
-            direct_sources[class_id] = depset(buckets[class_id])
-    check_direct_sources(direct_sources, str(target.label))
-    return (True, direct_sources, "")
 
 _QML_CONTEXT_EXTENSIONS = ["qml", "qmltypes", "js", "mjs"]
 
@@ -1288,6 +1200,7 @@ def _helm_context(target, ctx, what):
         }),
     )
     return context
+
 _DART_PACKAGE_CONFIG_REL = ".dart_tool/package_config.json"
 _DART_OPTIONS_REL = "analysis_options.yaml"
 
@@ -1324,20 +1237,6 @@ def _dart_context(target, ctx, what, capability, config_packages = []):
             stubs.append((path, stub))
     return (config, options, stubs)
 
-# Where each wrapper-carried tool comes from: (wrappers, defs.bzl, tool label).
-_TARGET_TOOL_OWNERS = {
-    "dart": ("dart_library, dart_binary or dart_test", "@rules_dx//dart/rules:defs.bzl", "@rules_dx//dart/tools:dart"),
-    "dfmt": ("d_library, d_binary or d_test", "@rules_dx//d/rules:defs.bzl", "@rules_dx//d/tools:dfmt"),
-    "dscanner": ("d_library, d_binary or d_test", "@rules_dx//d/rules:defs.bzl", "@rules_dx//d/tools:dscanner"),
-    "swift_format": ("swift_library, swift_binary or swift_test", "@rules_dx//swift/rules:defs.bzl", "@rules_dx//swift/tools:swift_format"),
-    "swift_lint": ("swift_library, swift_binary or swift_test", "@rules_dx//swift/rules:defs.bzl", "@rules_dx//swift/tools:swift_format"),
-    "zig_ast_check": ("zig_library, zig_binary or zig_test", "@rules_dx//zig/rules:defs.bzl", "@rules_dx//zig/tools:zig"),
-    "zig_fmt": ("zig_library, zig_binary or zig_test", "@rules_dx//zig/rules:defs.bzl", "@rules_dx//zig/tools:zig"),
-    "perlcritic": ("perl_library, perl_binary or perl_test", "@rules_dx//perl/rules:defs.bzl", "@rules_dx//perl/tools:perlcritic"),
-    "perltidy": ("perl_library, perl_binary or perl_test", "@rules_dx//perl/rules:defs.bzl", "@rules_dx//perl/tools:perltidy"),
-    "julia_format": ("julia_library, julia_binary or julia_test", "@rules_dx//julia/rules:defs.bzl", "@rules_dx//julia/tools:julia_format"),
-}
-
 # Converters Vale shells out to, by source class: (tool name, owner rule, defs.bzl).
 # The owner rule carries the converter in QualityToolsInfo, so Markdown-only targets
 # never load Python or Node.
@@ -1358,966 +1257,12 @@ def _vale_converters(target, stage_classes, what):
         found.append((name, target[QualityToolsInfo].tools[name]))
     return found
 
-def _tool_files_to_run(target, flag, tool, what):
-    """Returns the flag's tool, else the one the target carries."""
-    ftr = flag[DefaultInfo].files_to_run
-    if ftr != None and ftr.executable != None:
-        return ftr
-    if QualityToolsInfo in target and tool in target[QualityToolsInfo].tools:
-        return target[QualityToolsInfo].tools[tool]
-    wrappers, defs, tool_label = _TARGET_TOOL_OWNERS[tool]
-    fail(what + ": " + tool + " has no executable; use " + wrappers + " from " + defs + ", or set --@rules_dx//config:tool_" + tool + "=" + tool_label)
-
 def _gofumpt_lang(ctx, what):
     """Derives gofumpt -lang from the resolved rules_go SDK."""
     toolchain = ctx.toolchains[GO_TOOLCHAIN_TYPE]
     if toolchain == None:
         fail(what + ": gofumpt needs a registered rules_go Go toolchain to derive -lang")
     return go_lang_version(toolchain.sdk.version)
-
-def _unique(items):
-    """Returns items without repeats, in first-seen order."""
-    return list({item: True for item in items}.keys())
-
-def _real_tool_launch(target, ctx, stage_tools, delegated, has_rust_toolchain, what):
-    """Resolves each launched tool's binary, extra inputs, run tools and env from the tool table."""
-    binaries = {}
-    extra = {}
-    run_tools = []
-    env = {}
-    for tool in _unique(stage_tools):
-        spec = _REAL_TOOL_TABLE[tool]
-        kind = spec["kind"]
-        if kind == "upstream" or tool in delegated:
-            continue
-        if kind == "toolchain":
-            if has_rust_toolchain:
-                binaries[tool] = _rust_toolchain_file(ctx, spec["toolchain_file"])
-            continue
-        if kind == "file" and "fallback" in spec:
-            # An optional pin: the hub resolves an empty file set on platforms without an artifact.
-            files = getattr(ctx.files, "_" + tool)
-            if len(files) != 1:
-                fail(what + ": " + tool + " has no pinned artifact for this execution platform; set --@rules_dx//config:tool_" + tool + spec["fallback"])
-            binaries[tool] = files[0]
-        elif kind == "file":
-            binaries[tool] = getattr(ctx.file, "_" + tool)
-            runtime = getattr(ctx.attr, "_" + tool)[DefaultInfo].default_runfiles.files.to_list()
-            if runtime:
-                extra[tool] = runtime
-        elif kind == "executable":
-            tool_target = getattr(ctx.attr, "_" + tool)
-            binaries[tool] = getattr(ctx.executable, "_" + tool)
-            if spec.get("extra") == "files":
-                extra[tool] = tool_target[DefaultInfo].files.to_list()
-            elif spec.get("extra") == "runfiles":
-                extra[tool] = tool_target[DefaultInfo].default_runfiles.files.to_list()
-            if spec.get("run_tool", True):
-                run_tools.append(tool_target[DefaultInfo].files_to_run)
-        elif spec.get("target_tool", False):
-            ftr = _tool_files_to_run(target, getattr(ctx.attr, "_" + tool), tool, what)
-            binaries[tool] = ftr.executable
-            run_tools.append(ftr)
-        else:
-            ftr = getattr(ctx.attr, "_" + tool)[DefaultInfo].files_to_run
-            if ftr == None or ftr.executable == None:
-                fail(what + ": " + tool + " has no executable; set --@rules_dx//config:tool_" + tool + spec["fallback"])
-            binaries[tool] = ftr.executable
-            run_tools.append(ftr)
-        pairs = [real_request_tool_env(pair[0], pair[1]) for pair in spec.get("env", [])]
-        if spec.get("runfiles_env", False):
-            pairs.append(real_request_tool_env("RUNFILES_DIR", ctx.executable._runner.path + ".runfiles"))
-        if len(pairs) > 0:
-            env[tool] = pairs
-    return struct(binaries = binaries, extra = extra, run_tools = run_tools, env = env)
-
-def _rust_toolchain_file(ctx, name):
-    """Returns one tool file from the resolved Rust toolchains."""
-    if name == "rustc":
-        return rust_toolchain_rustc(ctx)
-    clippy_driver, rustfmt = rust_toolchain_tools(ctx)
-    return clippy_driver if name == "clippy_driver" else rustfmt
-
-def _real_resolved_stages(target, ctx, capability, what):
-    """Resolves one target's pipeline stages for both the real shards and the probe."""
-    policy = ctx.attr._policy[QualityPolicyInfo]
-    policy_error = real_policy_error(policy, capability, what)
-    if policy_error != "":
-        fail(policy_error)
-    if aspect_capability_blocked(ctx.rule.attr, capability):
-        return ([], None, None)
-    if target.label.repo_name != "":
-        return ([], None, None)
-    if QualitySourcesInfo in target:
-        direct_sources = target[QualitySourcesInfo].direct_sources
-    else:
-        # The dx wrapper's native "<name>_upstream" target shares its sources with the
-        # forwarder, which is the sole origin; skip it to avoid duplicate findings.
-        if target.label.name.endswith("_upstream"):
-            return ([], None, None)
-        (recognized, derived, ownership_error) = upstream_direct_sources(target, ctx)
-        if ownership_error != "":
-            fail(what + ": " + ownership_error)
-        if not recognized:
-            return ([], None, None)
-        direct_sources = derived
-    if inherits_test_crate_sources(capability):
-        harness = None
-        if _rust_common.test_crate_info in target:
-            harness = target[_rust_common.test_crate_info].crate
-        elif _rust_common.crate_info in target and target[_rust_common.crate_info].is_test:
-            harness = target[_rust_common.crate_info]
-        if harness != None:
-            direct_sources = merge_inherited_sources(direct_sources, harness.srcs.to_list(), "rust")
-    if len(direct_sources) == 0:
-        return ([], None, None)
-
-    (target_classes, direct_files, direct_paths, path_to_file) = aspect_direct_maps(direct_sources, what)
-    selections = aspect_family_selections(policy, capability)
-    resolved = resolve_pipeline(
-        target_classes,
-        direct_paths,
-        capability,
-        selections,
-        REAL_CLASS_TO_FAMILY,
-        REAL_ADAPTERS,
-    )
-    if len(resolved) == 0:
-        err = deferred_pipeline_error(target_classes, capability)
-        if err != "":
-            fail(what + ": " + err)
-    return (resolved, direct_files, path_to_file)
-
-def _real_pipeline_action(target, ctx, capability, allowed_tools, output_suffix, has_rust_toolchain, shard_name):
-    what = "real_aspect (" + str(target.label) + ")"
-    (resolved, direct_files, path_to_file) = _real_resolved_stages(target, ctx, capability, what)
-    if len(resolved) == 0:
-        return []
-    resolved = filter_pipeline_by_tools(resolved, allowed_tools)
-    if len(resolved) == 0:
-        return []
-
-    spotbugs_owned = []
-    spotbugs_aux = []
-    if "spotbugs" in [stage["tool"] for stage in resolved]:
-        if JavaInfo not in target:
-            resolved = drop_pipeline_tool(resolved, "spotbugs")
-            if len(resolved) == 0:
-                return []
-        else:
-            owned = {}
-            for output in target[JavaInfo].java_outputs:
-                if output.class_jar != None and ".." not in output.class_jar.short_path.split("/"):
-                    owned[output.class_jar.path] = output.class_jar
-            auxiliary = _jvm_aux_jars(target[JavaInfo], owned)
-            if ctx.configuration.coverage_enabled and hasattr(ctx.attr, "_jacoco_runtime"):
-                for jar in _jacoco_runtime_jars(ctx):
-                    if jar.path not in owned:
-                        auxiliary[jar.path] = jar
-            if len(owned) == 0:
-                resolved = drop_pipeline_tool(resolved, "spotbugs")
-                if len(resolved) == 0:
-                    return []
-            else:
-                spotbugs_owned = sorted(owned.values(), key = lambda f: f.short_path)
-                spotbugs_aux = sorted(auxiliary.values(), key = lambda f: f.short_path)
-
-    dialyzer_owned = []
-    dialyzer_aux = []
-    dialyzer_plts = []
-    dialyzer_code = []
-    if "dialyzer" in [stage["tool"] for stage in resolved]:
-        if BeamInfo not in target or len(target[BeamInfo].owned.to_list()) == 0:
-            resolved = drop_pipeline_tool(resolved, "dialyzer")
-            if len(resolved) == 0:
-                return []
-        else:
-            tool_target = getattr(ctx.attr, "_dialyzer")
-            if DialyzerToolInfo not in tool_target:
-                fail(what + ": dialyzer needs PLTs; set --@rules_dx//config:tool_dialyzer=@rules_dx//erlang/tools:dialyzer")
-            # The tool's PLTs come first; a language's own follow, without repeating one.
-            seen_plts = {}
-            for plt in tool_target[DialyzerToolInfo].plts + target[BeamInfo].plts:
-                if plt.path not in seen_plts:
-                    seen_plts[plt.path] = True
-                    dialyzer_plts.append(plt)
-            dialyzer_code = sorted(target[BeamInfo].code, key = lambda f: f.basename)
-            dialyzer_owned = sorted(target[BeamInfo].owned.to_list(), key = lambda f: f.short_path)
-            owned_paths = {f.path: True for f in dialyzer_owned}
-            dialyzer_aux = [f for f in sorted(target[BeamInfo].deps.to_list(), key = lambda f: f.short_path) if f.path not in owned_paths]
-
-    zanuda_trees = []
-    zanuda_stdlib = []
-    if "zanuda" in [stage["tool"] for stage in resolved]:
-        # zanuda reads the typed trees the compile wrote. A target that owns OCaml sources but
-        # carries no OCamlCmtInfo, or one that owns a source with no tree, would otherwise lint
-        # nothing and look clean, so both fail the analysis.
-        if OCamlCmtInfo not in target:
-            fail(what + ": zanuda needs OCamlCmtInfo, which only the dx ocaml_module and ocaml_signature rules provide")
-        listed = {}
-        for entry in target[OCamlCmtInfo].owned:
-            if entry.cmt and entry.source:
-                listed[entry.source.short_path] = ("impl", entry.cmt)
-            if entry.cmti and entry.signature:
-                listed[entry.signature.short_path] = ("intf", entry.cmti)
-        for stage in resolved:
-            if stage["tool"] != "zanuda":
-                continue
-            for ws_path in stage["sources"]:
-                if ws_path not in listed:
-                    fail(what + ": zanuda has no .cmt or .cmti for " + ws_path + "; was the target compiled with -no-bin-annot?")
-                (kind, tree) = listed[ws_path]
-                zanuda_trees.append(("dx-zanuda/%s/%s.%s" % (kind, ws_path, tree.extension), tree))
-        zanuda_stdlib = ctx.files._ocaml_stdlib
-
-    luals_modules = []
-    if "luals" in [stage["tool"] for stage in resolved]:
-        # Dependency modules become the library, one file per module name; the owned sources
-        # are checked in place, so they stay out of the library. Libraries carry LuaInfo; a
-        # lua_binary or lua_test has none, so its deps provide the modules.
-        owned_paths = {f.path: True for f in path_to_file.values()}
-        infos = [target[LuaInfo]] if LuaInfo in target else [dep[LuaInfo] for dep in getattr(ctx.rule.attr, "deps", []) if LuaInfo in dep]
-        seen_modules = {}
-        for info in infos:
-            for (module, module_file) in sorted(info.modules.to_list(), key = lambda m: m[0]):
-                if module_file.path not in owned_paths and module not in seen_modules:
-                    seen_modules[module] = True
-                    luals_modules.append(("dx-luals/mod/" + module.replace(".", "/") + ".lua", module_file))
-
-    phpstan_scan = []
-    if "phpstan" in [stage["tool"] for stage in resolved]:
-        if PhpInfo not in target:
-            resolved = drop_pipeline_tool(resolved, "phpstan")
-            if len(resolved) == 0:
-                return []
-        else:
-            # Dependencies are scanned for their symbols, never analysed or run; the owned
-            # sources are the CLI paths, so they stay out of the scan set.
-            owned_paths = {f.path: True for f in path_to_file.values()}
-            info = target[PhpInfo]
-            seen_scan = {}
-            for scan_file in sorted(info.transitive_srcs.to_list() + info.autoload_files.to_list(), key = lambda f: f.path):
-                if scan_file.path not in owned_paths and scan_file.path not in seen_scan:
-                    seen_scan[scan_file.path] = True
-                    phpstan_scan.append(("dx-phpstan/scan/" + staged_path(scan_file), scan_file))
-            for pkg_file in sorted(info.package_files.to_list(), key = lambda f: f.path):
-                if pkg_file.path.endswith(".php") and pkg_file.path not in owned_paths and pkg_file.path not in seen_scan:
-                    seen_scan[pkg_file.path] = True
-                    phpstan_scan.append(("dx-phpstan/pkg/" + staged_path(pkg_file), pkg_file))
-
-    sorbet_deps = []
-    if "sorbet" in [stage["tool"] for stage in resolved]:
-        # Dependency sources are only read for the constants they define; the owned sources
-        # are the CLI paths, so they stay out of the dependency set. A target without
-        # RubyFilesInfo has no dependencies to stage.
-        owned_paths = {f.path: True for f in path_to_file.values()}
-        if RubyFilesInfo in target:
-            seen_deps = {}
-            for dep_file in sorted(target[RubyFilesInfo].transitive_srcs.to_list(), key = lambda f: f.path):
-                if dep_file.path.endswith((".rb", ".rbi")) and dep_file.path not in owned_paths and dep_file.path not in seen_deps:
-                    seen_deps[dep_file.path] = True
-                    sorbet_deps.append(("dx-sorbet/dep/" + staged_path(dep_file), dep_file))
-
-    scalafix_owned = []
-    scalafix_aux = []
-    if "scalafix" in [stage["tool"] for stage in resolved]:
-        (scalafix_owned, scalafix_aux) = _scalafix_context(target, what)
-
-    fsharplint_refs = []
-    fsharplint_context = None
-    if "fsharplint" in [stage["tool"] for stage in resolved]:
-        (fsharplint_refs, fsharplint_context) = _fsharplint_context(target, ctx, what)
-
-    jet_staged = []
-    jet_config = None
-    if "jet" in [stage["tool"] for stage in resolved]:
-        if JuliaInfo not in target:
-            resolved = drop_pipeline_tool(resolved, "jet")
-            if len(resolved) == 0:
-                return []
-        else:
-            (jet_staged, jet_config) = _jet_staging(target, ctx, path_to_file)
-
-    helm_context = None
-    if "helm" in [stage["tool"] for stage in resolved]:
-        helm_context = _helm_context(target, ctx, what)
-    dart_package_config = None
-    dart_options = None
-    dart_stubs = []
-    dart_config_files = []
-    if "dart" in [stage["tool"] for stage in resolved]:
-        dart_config_packages = []
-        if capability != "format" and hasattr(ctx.rule.attr, "aspect_hints"):
-            for hint_target in ctx.rule.attr.aspect_hints:
-                if DxDartConfigInfo in hint_target:
-                    dart_config_packages.extend(hint_target[DxDartConfigInfo].packages.to_list())
-                    dart_config_files.extend(hint_target[DxDartConfigInfo].srcs.to_list())
-                    dart_config_files.extend(hint_target[DxDartConfigInfo].resources.to_list())
-        (dart_package_config, dart_options, dart_stubs) = _dart_context(target, ctx, what, capability, dart_config_packages)
-
-    jvm_check = None
-    for jvm_tool in _JVM_CHECK_TOOLS:
-        if jvm_tool in [stage["tool"] for stage in resolved]:
-            if JvmCheckInfo not in target or target[JvmCheckInfo].tool != jvm_tool:
-                resolved = drop_pipeline_tool(resolved, jvm_tool)
-                if len(resolved) == 0:
-                    return []
-            else:
-                jvm_check = target[JvmCheckInfo]
-
-    go_reports = {}
-    for go_tool in _GO_ANALYSIS_TOOLS:
-        if go_tool in [stage["tool"] for stage in resolved]:
-            if GoAnalysisInfo not in target:
-                if GoArchive not in target:
-                    resolved = drop_pipeline_tool(resolved, go_tool)
-                    if len(resolved) == 0:
-                        return []
-                else:
-                    fail(what + ": " + go_tool + " needs the Go analysis aspect report for a rules_go target")
-            else:
-                go_reports[go_tool] = target[GoAnalysisInfo].reports[go_tool]
-
-    compile_check = None
-    for compile_tool in COMPILE_CHECK_TOOLS:
-        if compile_tool in [stage["tool"] for stage in resolved]:
-            if CompileCheckInfo not in target or target[CompileCheckInfo].tool != compile_tool:
-                resolved = drop_pipeline_tool(resolved, compile_tool)
-                if len(resolved) == 0:
-                    return []
-            else:
-                compile_check = target[CompileCheckInfo]
-
-    tsc = None
-    if "tsc" in [stage["tool"] for stage in resolved]:
-        if TscInfo not in target:
-            resolved = drop_pipeline_tool(resolved, "tsc")
-            if len(resolved) == 0:
-                return []
-        else:
-            tsc = target[TscInfo]
-
-    roslyn = None
-    if "roslyn" in [stage["tool"] for stage in resolved] or "csc" in [stage["tool"] for stage in resolved]:
-        if RoslynInfo not in target:
-            fail(what + ": roslyn and csc need a csharp_* target compiled with the SDK analyzers")
-        roslyn = target[RoslynInfo]
-
-    fsc = None
-    if "fsc" in [stage["tool"] for stage in resolved]:
-        if FscUnsupportedInfo in target:
-            fail(what + ": fsc is unavailable: " + target[FscUnsupportedInfo].reason)
-        if FscInfo not in target:
-            fail(what + ": fsc needs an fsharp_* target")
-        fsc = target[FscInfo]
-
-    clang_syntax = None
-    if "clang_syntax" in [stage["tool"] for stage in resolved] or "clang_tidy" in [stage["tool"] for stage in resolved]:
-        if ClangSyntaxInfo not in target:
-            fail(what + ": clang_syntax and clang_tidy need a cc_*, objc_* or cuda_* target with compile actions (a header-only library needs --features=parse_headers)")
-        clang_syntax = target[ClangSyntaxInfo]
-
-    nvcc_syntax = None
-    if "nvcc_syntax" in [stage["tool"] for stage in resolved]:
-        if NvccSyntaxInfo not in target:
-            fail(what + ": nvcc_syntax needs a cuda_library or cuda_objects target with a CudaCompile action (a header-only library has none)")
-        nvcc_syntax = target[NvccSyntaxInfo]
-
-    sql_dialect = None
-    if "prettier" in [stage["tool"] for stage in resolved] and SqlDialectInfo in target:
-        sql_dialect = target[SqlDialectInfo].dialect
-
-    rustfmt_edition = None
-    if "rustfmt" in [stage["tool"] for stage in resolved]:
-        if not has_rust_toolchain:
-            fail(what + ": rustfmt needs the Rust family aspect")
-        if _rust_common.crate_info in target:
-            rustfmt_edition = target[_rust_common.crate_info].edition
-        elif _rust_common.test_crate_info in target:
-            rustfmt_edition = target[_rust_common.test_crate_info].crate.edition
-        else:
-            rustfmt_edition = RUST_EDITION
-        generated = generated_source_paths(direct_files)
-        if len(generated) > 0:
-            resolved = prune_tool_generated_sources(resolved, generated, "rustfmt")
-            if len(resolved) == 0:
-                return []
-
-    clippy_diagnostics = []
-    if "clippy" in [stage["tool"] for stage in resolved]:
-        if not has_rust_toolchain:
-            fail(what + ": clippy needs the Rust family aspect")
-        if OutputGroupInfo in target and "clippy_output" in target[OutputGroupInfo]:
-            clippy_diagnostics = target[OutputGroupInfo]["clippy_output"].to_list()
-    clippy_delegated = len(clippy_diagnostics) > 0
-
-    rustc_diagnostics = []
-    if "rustc" in [stage["tool"] for stage in resolved]:
-        if not has_rust_toolchain:
-            fail(what + ": rustc needs the Rust family aspect")
-        if OutputGroupInfo in target:
-            group = rustc_diagnostics_group(target[OutputGroupInfo])
-            if group:
-                rustc_diagnostics = target[OutputGroupInfo][group].to_list()
-    rustc_delegated = len(rustc_diagnostics) > 0
-
-    hints = []
-    if hasattr(ctx.rule.attr, "aspect_hints"):
-        for hint_target in ctx.rule.attr.aspect_hints:
-            if DxNativeConfigInfo in hint_target:
-                hints.append(hint_target[DxNativeConfigInfo])
-    stage_tools = [stage["tool"] for stage in resolved]
-    configs_by_tool = collect_native_configs(hints, stage_tools, str(target.label))
-
-    for stage in resolved:
-        config_error = missing_required_config_error(stage["tool"], capability, configs_by_tool, str(target.label))
-        if config_error != "":
-            fail(config_error)
-
-    delegated = {}
-    if clippy_delegated:
-        delegated["clippy"] = True
-    if rustc_delegated:
-        delegated["rustc"] = True
-    launch = _real_tool_launch(target, ctx, stage_tools, delegated, has_rust_toolchain, what)
-    tool_binaries = launch.binaries
-    tool_extra = launch.extra
-
-    out = ctx.actions.declare_file(target.label.name + "-real-" + capability + output_suffix + ".pb")
-
-    ordered_paths = ordered_pipeline_paths(resolved)
-    inputs = pipeline_inputs_for_paths(ordered_paths, path_to_file)
-
-    sibling_pairs = {}
-    if "markdown_check" in stage_tools and hasattr(ctx.rule.attr, "markdown_siblings"):
-        for sibling in ctx.rule.attr.markdown_siblings:
-            if hasattr(sibling, "files"):
-                sibling_files = sibling.files.to_list()
-            else:
-                sibling_files = [sibling]
-            for f in sibling_files:
-                if ".." in f.short_path.split("/"):
-                    fail(what + ": sibling path escapes workspace: '" + f.short_path + "'")
-                if f.short_path in path_to_file:
-                    fail(what + ": sibling '" + f.short_path + "' shadows a checked source; siblings must not shadow sources")
-                if f.short_path in sibling_pairs:
-                    fail(what + ": duplicate sibling '" + f.short_path + "'; siblings must be unique")
-                sibling_pairs[f.short_path] = f
-
-    request_stages = [real_request_stage(stage["tool"], stage["classes"], stage["sources"]) for stage in resolved]
-    request_sources = []
-    for ws_path in ordered_paths:
-        f = path_to_file.get(ws_path)
-        if f != None:
-            request_sources.append(real_request_mapping(ws_path, f.path))
-    request_siblings = []
-    for ws_path in sorted(sibling_pairs.keys()):
-        f = sibling_pairs[ws_path]
-        request_siblings.append(real_request_mapping(ws_path, f.path))
-        inputs.append(f)
-
-    resolve_pairs = {}
-    if "ty" in stage_tools and _PyInfo in target:
-        transitive = getattr(target[_PyInfo], "transitive_sources", None)
-        if transitive != None:
-            for f in transitive.to_list():
-                ws_path = f.short_path
-
-                if ".." in ws_path.split("/"):
-                    continue
-                if ws_path in path_to_file or ws_path in sibling_pairs or ws_path in resolve_pairs:
-                    continue
-                if not ws_path.endswith(".py") and not ws_path.endswith(".pyi"):
-                    continue
-                resolve_pairs[ws_path] = f
-    ty_search_dirs = []
-    if "ty" in stage_tools and _PyInfo in target:
-        transitive_dirs = getattr(target[_PyInfo], "transitive_sources", None)
-        if transitive_dirs != None:
-            for f in transitive_dirs.to_list():
-                if f.is_directory and f.short_path.endswith(".install"):
-                    ty_search_dirs.append(f)
-                    inputs.append(f)
-    if "qmllint" in stage_tools:
-        context_files = list(target[DefaultInfo].files.to_list())
-        if QmlContextInfo in target:
-            context_files.extend(target[QmlContextInfo].files.to_list())
-        for f in context_files:
-            ws_path = f.short_path
-            if ws_path.startswith("../"):
-                ws_path = "_external/" + ws_path[3:]
-            if ".." in ws_path.split("/"):
-                continue
-            if ws_path in path_to_file or ws_path in sibling_pairs or ws_path in resolve_pairs:
-                continue
-            if f.basename != "qmldir" and f.extension not in _QML_CONTEXT_EXTENSIONS:
-                continue
-            resolve_pairs[ws_path] = f
-    if "dart" in stage_tools and capability != "format":
-        dart_info = _dart_info(target, what)
-        dart_files = [f for f in dart_info.transitive_srcs.to_list() if f.extension == "dart"]
-        dart_files += [f for f in dart_info.transitive_resources.to_list() if f.basename == "_embedder.yaml"]
-        for f in dart_files + dart_config_files:
-            ws_path = f.short_path
-            if ws_path.startswith("../"):
-                ws_path = dart_external_root(ws_path)
-            if ".." in ws_path.split("/"):
-                continue
-            if ws_path in path_to_file or ws_path in sibling_pairs or ws_path in resolve_pairs:
-                continue
-            resolve_pairs[ws_path] = f
-        for (stub_path, _) in dart_stubs:
-            if stub_path in path_to_file or stub_path in sibling_pairs or stub_path in resolve_pairs:
-                fail(what + ": generated pubspec.yaml stub collides with the staged source " + stub_path)
-    if "cue" in stage_tools:
-        for f in target[DefaultInfo].files.to_list():
-            ws_path = f.short_path
-            if ".." in ws_path.split("/") or f.extension != "cue":
-                continue
-            if ws_path in path_to_file or ws_path in sibling_pairs or ws_path in resolve_pairs:
-                continue
-            resolve_pairs[ws_path] = f
-    if "pkl" in stage_tools and capability != "format":
-        for f in target[DefaultInfo].files.to_list():
-            ws_path = f.short_path
-            if ".." in ws_path.split("/") or f.extension != "pkl":
-                continue
-            if ws_path in path_to_file or ws_path in sibling_pairs or ws_path in resolve_pairs:
-                continue
-            resolve_pairs[ws_path] = f
-    terraform_mirror_roots = {}
-    if "terraform" in stage_tools and capability == "typecheck":
-        # Local module sources of deps are staged next to the owned files; the providers
-        # are offline mirrors whose roots reach the runner as -plugin-dir values.
-        for f in target[DefaultInfo].files.to_list():
-            ws_path = f.short_path
-            if ".." in ws_path.split("/") or f.extension not in ["tf", "json", "hcl"]:
-                continue
-            if ws_path in path_to_file or ws_path in sibling_pairs or ws_path in resolve_pairs:
-                continue
-            resolve_pairs[ws_path] = f
-        if TerraformModuleInfo in target:
-            for provider in target[TerraformModuleInfo].transitive_providers.to_list():
-                terraform_mirror_roots[provider.mirror_root] = True
-                inputs.extend(provider.files.to_list())
-    if "opa" in stage_tools and RegoInfo in target:
-        for f in target[RegoInfo].transitive_srcs.to_list():
-            ws_path = f.short_path
-            if ".." in ws_path.split("/") or f.extension != "rego":
-                continue
-            if ws_path in path_to_file or ws_path in sibling_pairs or ws_path in resolve_pairs:
-                continue
-            resolve_pairs[ws_path] = f
-    bicep_registry = []
-    if "bicep" in stage_tools and BicepInfo in target:
-        for f in target[BicepInfo].transitive_registry.to_list():
-            rel = f.short_path.partition("/home/.bicep/")[2]
-            if rel:
-                bicep_registry.append((rel, f))
-        for f in depset(transitive = [target[BicepInfo].transitive_srcs, target[BicepInfo].transitive_data]).to_list():
-            ws_path = f.short_path
-            if ".." in ws_path.split("/"):
-                continue
-            if ws_path in path_to_file or ws_path in sibling_pairs or ws_path in resolve_pairs:
-                continue
-            resolve_pairs[ws_path] = f
-    if "jsonnetfmt" in stage_tools or "jsonnet_lint" in stage_tools:
-        for f in target[DefaultInfo].files.to_list():
-            ws_path = f.short_path
-            if ".." in ws_path.split("/") or f.extension not in ["jsonnet", "libsonnet", "json"]:
-                continue
-            if ws_path in path_to_file or ws_path in sibling_pairs or ws_path in resolve_pairs:
-                continue
-            resolve_pairs[ws_path] = f
-    if "redocly" in stage_tools:
-        for f in target[DefaultInfo].files.to_list():
-            ws_path = f.short_path
-            if ".." in ws_path.split("/") or f.extension not in ["yaml", "yml", "json"]:
-                continue
-            if ws_path in path_to_file or ws_path in sibling_pairs or ws_path in resolve_pairs:
-                continue
-            resolve_pairs[ws_path] = f
-    for closure_tool, (closure_provider, closure_files, closure_strict) in _CLOSURE_STAGING.items():
-        if closure_tool not in stage_tools or closure_provider not in target:
-            continue
-        for (ws_path, f) in closure_files(target):
-            staged_as = None
-            for known in (path_to_file, sibling_pairs, resolve_pairs):
-                if ws_path in known:
-                    staged_as = known[ws_path]
-                    break
-            if staged_as != None:
-                if closure_strict and staged_as != f:
-                    fail(what + ": " + closure_tool + " would stage two different files at " + ws_path + ": " + staged_as.path + " and " + f.path)
-                continue
-            resolve_pairs[ws_path] = f
-    if "buf" in stage_tools and ProtoInfo in target:
-        proto_roots = sorted([r for r in target[ProtoInfo].transitive_proto_path.to_list() if r != "."], key = lambda r: -len(r))
-        for f in target[ProtoInfo].transitive_sources.to_list():
-            ws_path = f.path
-            for root in proto_roots:
-                if ws_path.startswith(root + "/"):
-                    ws_path = ws_path[len(root) + 1:]
-                    break
-            if ".." in ws_path.split("/"):
-                continue
-            if ws_path in path_to_file or ws_path in sibling_pairs or ws_path in resolve_pairs:
-                continue
-            resolve_pairs[ws_path] = f
-    if "helm" in stage_tools and HelmChartInfo in target:
-        for f in target[HelmChartInfo].dependencies:
-            ws_path = f.short_path
-            if ".." in ws_path.split("/") or ws_path.startswith("../"):
-                continue
-            if ws_path in path_to_file or ws_path in sibling_pairs or ws_path in resolve_pairs:
-                continue
-            resolve_pairs[ws_path] = f
-    pwsh_module_roots = {}
-    if "psscriptanalyzer" in stage_tools:
-        context_files = list(target[DefaultInfo].files.to_list())
-        upstream = getattr(ctx.rule.attr, "upstream", None)
-        if type(upstream) == "Target" and _PwshInfo in upstream:
-            context_files.extend(upstream[DefaultInfo].default_runfiles.files.to_list())
-        for f in context_files:
-            ws_path = f.short_path
-            if f.extension not in ["ps1", "psd1", "psm1"]:
-                continue
-            if ws_path.startswith("../"):
-                if "_toolchains__" in ws_path.split("/")[1]:
-                    continue
-                ws_path = "external/" + ws_path[3:]
-            if ".." in ws_path.split("/"):
-                continue
-            if f.extension in ["psd1", "psm1"]:
-                module_dir = ws_path.rpartition("/")[0]
-                pwsh_module_roots[module_dir.rpartition("/")[0] or "."] = True
-            if ws_path in path_to_file or ws_path in sibling_pairs or ws_path in resolve_pairs:
-                continue
-            resolve_pairs[ws_path] = f
-    request_resolves = []
-    for ws_path in sorted(resolve_pairs.keys()):
-        f = resolve_pairs[ws_path]
-        request_resolves.append(real_request_mapping(ws_path, f.path))
-        inputs.append(f)
-
-    tool_env_entries = launch.env
-    run_tools = launch.run_tools
-    if len(zanuda_stdlib) > 0:
-        # Relative to the execution root, like the binary; the runner makes it absolute.
-        tool_env_entries.setdefault("zanuda", []).append(real_request_tool_env("OCAMLLIB", zanuda_stdlib[0].dirname))
-    if "terraform" in tool_env_entries and capability == "typecheck":
-        # Relative to the execution root; the runner makes each root absolute. May be empty.
-        tool_env_entries["terraform"].append(real_request_tool_env("DX_TERRAFORM_PLUGIN_DIRS", "|".join(sorted(terraform_mirror_roots.keys()))))
-    if "psscriptanalyzer" in tool_env_entries:
-        tool_env_entries["psscriptanalyzer"].append(real_request_tool_env("DX_PWSH_MODULE_ROOTS", "|".join(sorted(pwsh_module_roots.keys()))))
-
-    vale_converters = []
-    for stage in resolved:
-        if stage["tool"] == "vale":
-            for converter in _vale_converters(target, stage["classes"], what):
-                if converter[0] not in [c[0] for c in vale_converters]:
-                    vale_converters.append(converter)
-    for _name, converter in vale_converters:
-        run_tools = run_tools + [converter]
-
-    request_tools = {}
-    for tool in stage_tools:
-        binary_path = None
-        if not (tool == "clippy" and clippy_delegated) and not (tool == "rustc" and rustc_delegated) and _REAL_TOOL_TABLE[tool]["kind"] != "upstream":
-            binary = tool_binaries[tool]
-            binary_path = binary.path
-            inputs.append(binary)
-            inputs.extend(tool_extra.get(tool, []))
-        tool_files = []
-        if tool == "spotbugs":
-            for jar in spotbugs_owned:
-                tool_files.append(real_request_tool_file("dx-spotbugs/owned/" + jar.short_path, jar.path))
-                inputs.append(jar)
-            for index, jar in enumerate(spotbugs_aux):
-                tool_files.append(real_request_tool_file("dx-spotbugs/aux/%d-%s" % (index, jar.basename), jar.path))
-                inputs.append(jar)
-        if tool == "dialyzer":
-            for index, plt in enumerate(dialyzer_plts):
-                tool_files.append(real_request_tool_file("dx-dialyzer/plt/%s-%s" % (("000" + str(index))[-3:], plt.basename), plt.path))
-                inputs.append(plt)
-            for index, beam in enumerate(dialyzer_owned):
-                tool_files.append(real_request_tool_file("dx-dialyzer/owned/%d/%s" % (index, beam.basename), beam.path))
-                inputs.append(beam)
-            for beam in dialyzer_code:
-                tool_files.append(real_request_tool_file("dx-dialyzer/pa/" + beam.basename, beam.path))
-                inputs.append(beam)
-            seen_aux = {}
-            for index, beam in enumerate(dialyzer_aux):
-                if beam.path in seen_aux:
-                    continue
-                seen_aux[beam.path] = True
-                tool_files.append(real_request_tool_file("dx-dialyzer/aux/%d/%s" % (index, beam.basename), beam.path))
-                inputs.append(beam)
-        if tool == "zanuda":
-            for (rel, tree) in zanuda_trees:
-                tool_files.append(real_request_tool_file(rel, tree.path))
-                inputs.append(tree)
-            inputs.extend(zanuda_stdlib)
-        if tool == "jet" and jet_config != None:
-            for (rel, staged_file) in jet_staged:
-                tool_files.append(real_request_tool_file(rel, staged_file.path))
-                inputs.append(staged_file)
-            tool_files.append(real_request_tool_file("dx-jet/config.toml", jet_config.path))
-            inputs.append(jet_config)
-        if tool == "bicep":
-            for (rel, cached) in bicep_registry:
-                tool_files.append(real_request_tool_file("dx-bicep/home/.bicep/" + rel, cached.path))
-                inputs.append(cached)
-        if tool == "luals":
-            for (rel, module_file) in luals_modules:
-                tool_files.append(real_request_tool_file(rel, module_file.path))
-                inputs.append(module_file)
-        if tool == "phpstan":
-            for (rel, scan_file) in phpstan_scan:
-                tool_files.append(real_request_tool_file(rel, scan_file.path))
-                inputs.append(scan_file)
-        if tool == "sorbet":
-            for (rel, dep_file) in sorbet_deps:
-                tool_files.append(real_request_tool_file(rel, dep_file.path))
-                inputs.append(dep_file)
-        if tool == "scalafix":
-            for index, jar in enumerate(scalafix_owned):
-                tool_files.append(real_request_tool_file("dx-scalafix/owned/%d-%s" % (index, jar.basename), jar.path))
-                inputs.append(jar)
-            for index, jar in enumerate(scalafix_aux):
-                tool_files.append(real_request_tool_file("dx-scalafix/aux/%d-%s" % (index, jar.basename), jar.path))
-                inputs.append(jar)
-        if tool == "fsharplint":
-            for index, lib in enumerate(fsharplint_refs):
-                tool_files.append(real_request_tool_file("dx-fsharplint/ref/%d-%s" % (index, lib.basename), lib.path))
-                inputs.append(lib)
-            tool_files.append(real_request_tool_file("dx-fsharplint/context.json", fsharplint_context.path))
-            inputs.append(fsharplint_context)
-        path_tools = []
-        if tool == "helm":
-            tool_files.append(real_request_tool_file("dx-helm/context.json", helm_context.path))
-            inputs.append(helm_context)
-            path_tools.append({"binary": ctx.file._kubeconform.path, "name": "kubeconform"})
-            inputs.append(ctx.file._kubeconform)
-        if tool == "vale":
-            for name, converter in vale_converters:
-                path_tools.append({"binary": converter.executable.path, "name": name})
-                inputs.append(converter.executable)
-        edition = None
-        if tool == "rustfmt":
-            edition = rustfmt_edition
-        if tool == "gofumpt":
-            edition = _gofumpt_lang(ctx, what)
-        config_rel = None
-        if tool in configs_by_tool:
-            hint = configs_by_tool[tool]
-            config_rel = native_config_scratch_rel(hint.config.short_path)
-            if config_rel == None:
-                fail("native_config (%s): config %s for %s escapes the scratch" % (tool, hint.config.short_path, what))
-            for f in sorted(hint.closure.to_list(), key = lambda f: f.short_path):
-                closure_rel = native_config_scratch_rel(f.short_path)
-                if closure_rel == None:
-                    fail("native_config (%s): file %s for %s escapes the scratch" % (tool, f.short_path, what))
-                tool_files.append(real_request_tool_file(closure_rel, f.path))
-                inputs.append(f)
-        if tool == "dart":
-            # dart format reads `formatter:` from the nearest analysis_options.yaml, so the
-            # hinted config (or an empty one) sits at the scratch root and nowhere else.
-            options = dart_options
-            if tool in configs_by_tool:
-                options = configs_by_tool[tool].config
-            else:
-                inputs.append(options)
-            if config_rel != _DART_OPTIONS_REL:
-                tool_files.append(real_request_tool_file(_DART_OPTIONS_REL, options.path))
-            tool_files.append(real_request_tool_file(_DART_PACKAGE_CONFIG_REL, dart_package_config.path))
-            inputs.append(dart_package_config)
-            for (stub_path, stub) in dart_stubs:
-                if stub_path == config_rel:
-                    fail(what + ": generated pubspec.yaml stub collides with the config " + stub_path)
-                tool_files.append(real_request_tool_file(stub_path, stub.path))
-                inputs.append(stub)
-        upstream = []
-        if tool == "clippy" and clippy_delegated:
-            for diagnostics in clippy_diagnostics:
-                upstream.append(diagnostics.path)
-                inputs.append(diagnostics)
-        if tool == "rustc" and rustc_delegated:
-            for diagnostics in rustc_diagnostics:
-                upstream.append(diagnostics.path)
-                inputs.append(diagnostics)
-        if tool in go_reports:
-            upstream.append(go_reports[tool].path)
-            inputs.append(go_reports[tool])
-        if tool in _JVM_CHECK_TOOLS:
-            upstream.append(jvm_check.log.path)
-            inputs.append(jvm_check.log)
-        if tool in COMPILE_CHECK_TOOLS:
-            for i in range(len(compile_check.diagnostics)):
-                upstream.append(compile_check.diagnostics[i].path)
-                inputs.append(compile_check.diagnostics[i])
-                stem = compile_check.diagnostics[i].basename.rpartition(".")[0]
-                tool_files.append(real_request_tool_file("dx-compile-check/" + stem + "/exit", compile_check.statuses[i].path))
-                inputs.append(compile_check.statuses[i])
-        if tool == "tsc":
-            upstream.append(tsc.stdout.path)
-            inputs.append(tsc.stdout)
-            tool_files.append(real_request_tool_file("dx-tsc/exit", tsc.status.path))
-            inputs.append(tsc.status)
-        if tool == "roslyn" or tool == "csc":
-            for i in range(len(roslyn.tfms)):
-                upstream.append(roslyn.sarifs[i].path)
-                inputs.append(roslyn.sarifs[i])
-                tool_files.append(real_request_tool_file("dx-roslyn/" + roslyn.tfms[i] + "/exit", roslyn.statuses[i].path))
-                inputs.append(roslyn.statuses[i])
-        if tool == "fsc":
-            for i in range(len(fsc.tfms)):
-                upstream.append(fsc.logs[i].path)
-                inputs.append(fsc.logs[i])
-                tool_files.append(real_request_tool_file("dx-fsc/" + fsc.tfms[i] + "/exit", fsc.statuses[i].path))
-                inputs.append(fsc.statuses[i])
-        if tool == "clang_tidy":
-            for diagnostics in clang_syntax.tidy_diagnostics:
-                upstream.append(diagnostics.path)
-                inputs.append(diagnostics)
-        if tool == "clang_syntax":
-            for i in range(len(clang_syntax.diagnostics)):
-                upstream.append(clang_syntax.diagnostics[i].path)
-                inputs.append(clang_syntax.diagnostics[i])
-                stem = clang_syntax.diagnostics[i].basename.rpartition(".")[0]
-                tool_files.append(real_request_tool_file("dx-clang-syntax/" + stem + "/exit", clang_syntax.statuses[i].path))
-                inputs.append(clang_syntax.statuses[i])
-                tool_files.append(real_request_tool_file("dx-clang-syntax/" + stem + "/driver", clang_syntax.drivers[i].path))
-                inputs.append(clang_syntax.drivers[i])
-        if tool == "nvcc_syntax":
-            for i in range(len(nvcc_syntax.diagnostics)):
-                upstream.append(nvcc_syntax.diagnostics[i].path)
-                inputs.append(nvcc_syntax.diagnostics[i])
-                stem = nvcc_syntax.diagnostics[i].basename.rpartition(".")[0]
-                tool_files.append(real_request_tool_file("dx-nvcc-syntax/" + stem + "/exit", nvcc_syntax.statuses[i].path))
-                inputs.append(nvcc_syntax.statuses[i])
-        request_tools[tool] = real_request_tool(
-            binary_path = binary_path,
-            config_rel = config_rel,
-            edition = edition,
-            dialect = sql_dialect if tool == "prettier" else None,
-            files = tool_files,
-            env = tool_env_entries.get(tool, []),
-            upstream = upstream,
-            search_paths = [f.path for f in ty_search_dirs] if tool == "ty" else [],
-            path_tools = path_tools,
-        )
-
-    doc = real_request_doc(
-        str(target.label),
-        capability,
-        request_stages,
-        request_sources,
-        request_siblings,
-        request_resolves,
-        request_tools,
-    )
-    request_file = ctx.actions.declare_file(target.label.name + "-real-" + capability + output_suffix + "-request.json")
-    ctx.actions.write(output = request_file, content = json.encode(doc))
-    inputs.append(request_file)
-
-    args = ctx.actions.args()
-    args.add("--request", request_file.path)
-    args.add("--output", out.path)
-    args.add("--shard", shard_name)
-
-    ctx.actions.run(
-        executable = ctx.executable._runner,
-        inputs = depset(inputs),
-        tools = run_tools,
-        outputs = [out],
-        arguments = [args],
-        execution_requirements = dx_stage_execution_requirements(stage_tools, capability),
-        mnemonic = "DxRealQuality" + capability.capitalize(),
-        resource_set = real_quality_resource_set(sorted(tool_binaries.keys())),
-        progress_message = "Dx real quality " + capability + " (" + shard_name + ") %{label}",
-        toolchain = RUST_TOOLCHAIN_TYPE if has_rust_toolchain else None,
-    )
-
-    return [OutputGroupInfo(dx_results = depset([out]))]
-
-def _make_real_impl(capability, allowed_tools, output_suffix, has_rust_toolchain, shard_name):
-    """Makes one shard impl over the shared real pipeline action."""
-
-    def _impl(target, ctx):
-        return _real_pipeline_action(target, ctx, capability, allowed_tools, output_suffix, has_rust_toolchain, shard_name)
-
-    return _impl
-
-def real_quality_resource_set(tools):
-    """Returns the resource_set callback for the costliest tier among the launched tools."""
-    return dx_quality_resource_set([_REAL_TOOL_TABLE[tool]["resources"] for tool in tools])
-
-def real_tool_table_shape_error(table):
-    """Returns the first broken shape rule in a real tool table, else an empty string."""
-    for tool in sorted(table.keys()):
-        spec = table[tool]
-        prefix = "real aspects: table tool '" + tool + "' "
-        if tool not in REAL_ADAPTERS:
-            return prefix + "is outside REAL_ADAPTERS"
-        if spec.get("resources") not in DX_QUALITY_TIERS:
-            return prefix + "names unknown resources tier '" + str(spec.get("resources")) + "'"
-        for capability in spec["capabilities"]:
-            if capability not in REAL_ADAPTERS[tool]:
-                return prefix + "names unwired capability '" + capability + "'"
-        kind = spec.get("kind")
-        if kind not in _REAL_TOOL_KINDS:
-            return prefix + "names unknown kind '" + str(kind) + "'"
-        if kind in ["executable", "file", "setting"] and "attr" not in spec:
-            return prefix + "needs an attr for kind '" + kind + "'"
-        if kind not in ["executable", "file", "setting"] and "attr" in spec:
-            return prefix + "must not set an attr for kind '" + kind + "'"
-        if kind == "setting" and ("fallback" in spec) == ("target_tool" in spec):
-            return prefix + "needs exactly one of fallback or target_tool"
-        if kind not in ["setting", "file"] and "fallback" in spec:
-            return prefix + "sets fallback outside the setting and file kinds"
-        if kind != "setting" and "target_tool" in spec:
-            return prefix + "sets target_tool outside the setting kind"
-        if spec.get("target_tool", False) and tool not in _TARGET_TOOL_OWNERS:
-            return prefix + "has no wrapper owner in _TARGET_TOOL_OWNERS"
-        if kind != "executable" and ("extra" in spec or "run_tool" in spec or "runfiles_env" in spec):
-            return prefix + "sets extra, run_tool or runfiles_env outside the executable kind"
-        if spec.get("extra", "files") not in ["files", "runfiles"]:
-            return prefix + "names unknown extra '" + str(spec.get("extra")) + "'"
-        if (kind == "toolchain") != ("toolchain_file" in spec) or spec.get("toolchain_file", "rustc") not in _REAL_TOOLCHAIN_FILES:
-            return prefix + "needs a known toolchain_file exactly when its kind is toolchain"
-        for pair in spec.get("env", []):
-            if type(pair) != "list" or len(pair) != 2 or type(pair[0]) != "string" or type(pair[1]) != "string":
-                return prefix + "has an env entry that is not a pair of strings"
-    return ""
-
-def real_tool_table_error():
-    """Validates the real tool table and that a built shard runs every tool capability."""
-    error = real_tool_table_shape_error(_REAL_TOOL_TABLE)
-    if error != "":
-        return error
-    wired = real_wired_capabilities()
-    for tool in sorted(_REAL_TOOL_TABLE.keys()):
-        if wired.get(tool, []) != sorted(_REAL_TOOL_TABLE[tool]["capabilities"]):
-            return "real aspects: table tool '" + tool + "' has a capability no shard runs"
-    return ""
-
-_REAL_BASE_ATTRS = {
-    "_policy": attr.label(
-        default = "//config:workspace",
-        providers = [QualityPolicyInfo],
-    ),
-    "_runner": attr.label(
-        default = "//quality/runner:quality_runner",
-        executable = True,
-        cfg = "exec",
-        allow_files = True,
-    ),
-}
-
-def _real_attrs_for(tools):
-    """Builds one shard attr set from the attrs in the tool table."""
-    return _REAL_BASE_ATTRS | {"_" + tool: _REAL_TOOL_TABLE[tool]["attr"] for tool in tools if "attr" in _REAL_TOOL_TABLE[tool]}
 
 _REAL_SHARD_SPECS = {
     "real_cc_format": {
@@ -2949,94 +1894,735 @@ _REAL_SHARD_SPECS = {
     },
 }
 
-def _expand_shard(spec):
-    """Expands one shard spec into its tools, attrs and Rust toolchain flag."""
-    tools = _shard_tools(spec["shard"], spec["capability"])
-    attr_tools = _shard_tools(spec["shard"], None) if spec.get("shared_attrs", False) else tools
-    return spec | {
-        "attrs": _real_attrs_for(attr_tools) | spec.get("extra_attrs", {}),
-        "has_rust": len([tool for tool in tools if _REAL_TOOL_TABLE[tool]["kind"] == "toolchain"]) > 0,
-        "tools": tools,
-    }
+def _stage(files, inputs, rel, f):
+    """Stages f at rel for the tool and lists it as an action input."""
+    files.append((rel, f))
+    inputs.append(f)
 
-_REAL_SHARDS = {name: _expand_shard(spec) for name, spec in _REAL_SHARD_SPECS.items()}
+def _without(resolved, tool):
+    """Context that drops a tool from the pipeline."""
+    return real_context(resolved = drop_pipeline_tool(resolved, tool))
 
-def _make_real_aspect(shard_name):
-    """Builds one shard aspect from the shard table."""
-    shard = _REAL_SHARDS[shard_name]
-    return aspect(
-        implementation = _make_real_impl(shard["capability"], shard["tools"], shard["suffix"], shard["has_rust"], shard_name),
-        doc = shard["doc"],
-        attr_aspects = ["aspect_hints"],
-        attrs = shard["attrs"],
-        toolchains = shard.get("toolchains", []),
-        requires = shard.get("requires", []),
-        required_aspect_providers = shard.get("required_aspect_providers", []),
+def _spotbugs_hook(target, ctx, resolved, _capability, _what, _shared):
+    if JavaInfo not in target:
+        return _without(resolved, "spotbugs")
+    owned = {}
+    for output in target[JavaInfo].java_outputs:
+        if output.class_jar != None and ".." not in output.class_jar.short_path.split("/"):
+            owned[output.class_jar.path] = output.class_jar
+    auxiliary = _jvm_aux_jars(target[JavaInfo], owned)
+    if ctx.configuration.coverage_enabled and hasattr(ctx.attr, "_jacoco_runtime"):
+        for jar in _jacoco_runtime_jars(ctx):
+            if jar.path not in owned:
+                auxiliary[jar.path] = jar
+    if len(owned) == 0:
+        return _without(resolved, "spotbugs")
+    tool_files = []
+    inputs = []
+    for jar in sorted(owned.values(), key = lambda f: f.short_path):
+        _stage(tool_files, inputs, "dx-spotbugs/owned/" + jar.short_path, jar)
+    for index, jar in enumerate(sorted(auxiliary.values(), key = lambda f: f.short_path)):
+        _stage(tool_files, inputs, "dx-spotbugs/aux/%d-%s" % (index, jar.basename), jar)
+    return real_context(tool_files = tool_files, inputs = inputs)
+
+def _dialyzer_hook(target, ctx, resolved, _capability, what, _shared):
+    if BeamInfo not in target or len(target[BeamInfo].owned.to_list()) == 0:
+        return _without(resolved, "dialyzer")
+    tool_target = getattr(ctx.attr, "_dialyzer")
+    if DialyzerToolInfo not in tool_target:
+        fail(what + ": dialyzer needs PLTs; set --@rules_dx//config:tool_dialyzer=@rules_dx//erlang/tools:dialyzer")
+
+    # The tool's PLTs come first; a language's own follow, without repeating one.
+    plts = []
+    seen_plts = {}
+    for plt in tool_target[DialyzerToolInfo].plts + target[BeamInfo].plts:
+        if plt.path not in seen_plts:
+            seen_plts[plt.path] = True
+            plts.append(plt)
+    code = sorted(target[BeamInfo].code, key = lambda f: f.basename)
+    owned = sorted(target[BeamInfo].owned.to_list(), key = lambda f: f.short_path)
+    owned_paths = {f.path: True for f in owned}
+    aux = [f for f in sorted(target[BeamInfo].deps.to_list(), key = lambda f: f.short_path) if f.path not in owned_paths]
+    tool_files = []
+    inputs = []
+    for index, plt in enumerate(plts):
+        _stage(tool_files, inputs, "dx-dialyzer/plt/%s-%s" % (("000" + str(index))[-3:], plt.basename), plt)
+    for index, beam in enumerate(owned):
+        _stage(tool_files, inputs, "dx-dialyzer/owned/%d/%s" % (index, beam.basename), beam)
+    for beam in code:
+        _stage(tool_files, inputs, "dx-dialyzer/pa/" + beam.basename, beam)
+    seen_aux = {}
+    for index, beam in enumerate(aux):
+        if beam.path in seen_aux:
+            continue
+        seen_aux[beam.path] = True
+        _stage(tool_files, inputs, "dx-dialyzer/aux/%d/%s" % (index, beam.basename), beam)
+    return real_context(tool_files = tool_files, inputs = inputs)
+
+def _zanuda_hook(target, ctx, resolved, _capability, what, _shared):
+    # zanuda reads the typed trees the compile wrote. A target that owns OCaml sources but
+    # carries no OCamlCmtInfo, or one that owns a source with no tree, would otherwise lint
+    # nothing and look clean, so both fail the analysis.
+    if OCamlCmtInfo not in target:
+        fail(what + ": zanuda needs OCamlCmtInfo, which only the dx ocaml_module and ocaml_signature rules provide")
+    listed = {}
+    for entry in target[OCamlCmtInfo].owned:
+        if entry.cmt and entry.source:
+            listed[entry.source.short_path] = ("impl", entry.cmt)
+        if entry.cmti and entry.signature:
+            listed[entry.signature.short_path] = ("intf", entry.cmti)
+    tool_files = []
+    inputs = []
+    for stage in resolved:
+        if stage["tool"] != "zanuda":
+            continue
+        for ws_path in stage["sources"]:
+            if ws_path not in listed:
+                fail(what + ": zanuda has no .cmt or .cmti for " + ws_path + "; was the target compiled with -no-bin-annot?")
+            (kind, tree) = listed[ws_path]
+            _stage(tool_files, inputs, "dx-zanuda/%s/%s.%s" % (kind, ws_path, tree.extension), tree)
+    stdlib = ctx.files._ocaml_stdlib
+    inputs.extend(stdlib)
+
+    # Relative to the execution root, like the binary; the runner makes it absolute.
+    env = [real_request_tool_env("OCAMLLIB", stdlib[0].dirname)] if len(stdlib) > 0 else []
+    return real_context(tool_files = tool_files, inputs = inputs, env = env)
+
+def _luals_hook(target, ctx, _resolved, _capability, _what, shared):
+    # Dependency modules become the library, one file per module name; the owned sources
+    # are checked in place, so they stay out of the library. Libraries carry LuaInfo; a
+    # lua_binary or lua_test has none, so its deps provide the modules.
+    owned_paths = {f.path: True for f in shared.path_to_file.values()}
+    infos = [target[LuaInfo]] if LuaInfo in target else [dep[LuaInfo] for dep in getattr(ctx.rule.attr, "deps", []) if LuaInfo in dep]
+    tool_files = []
+    inputs = []
+    seen_modules = {}
+    for info in infos:
+        for (module, module_file) in sorted(info.modules.to_list(), key = lambda m: m[0]):
+            if module_file.path not in owned_paths and module not in seen_modules:
+                seen_modules[module] = True
+                _stage(tool_files, inputs, "dx-luals/mod/" + module.replace(".", "/") + ".lua", module_file)
+    return real_context(tool_files = tool_files, inputs = inputs)
+
+def _phpstan_hook(target, _ctx, resolved, _capability, _what, shared):
+    if PhpInfo not in target:
+        return _without(resolved, "phpstan")
+
+    # Dependencies are scanned for their symbols, never analysed or run; the owned
+    # sources are the CLI paths, so they stay out of the scan set.
+    owned_paths = {f.path: True for f in shared.path_to_file.values()}
+    info = target[PhpInfo]
+    tool_files = []
+    inputs = []
+    seen_scan = {}
+    for scan_file in sorted(info.transitive_srcs.to_list() + info.autoload_files.to_list(), key = lambda f: f.path):
+        if scan_file.path not in owned_paths and scan_file.path not in seen_scan:
+            seen_scan[scan_file.path] = True
+            _stage(tool_files, inputs, "dx-phpstan/scan/" + staged_path(scan_file), scan_file)
+    for pkg_file in sorted(info.package_files.to_list(), key = lambda f: f.path):
+        if pkg_file.path.endswith(".php") and pkg_file.path not in owned_paths and pkg_file.path not in seen_scan:
+            seen_scan[pkg_file.path] = True
+            _stage(tool_files, inputs, "dx-phpstan/pkg/" + staged_path(pkg_file), pkg_file)
+    return real_context(tool_files = tool_files, inputs = inputs)
+
+def _sorbet_hook(target, _ctx, _resolved, _capability, _what, shared):
+    # Dependency sources are only read for the constants they define; the owned sources
+    # are the CLI paths, so they stay out of the dependency set. A target without
+    # RubyFilesInfo has no dependencies to stage.
+    owned_paths = {f.path: True for f in shared.path_to_file.values()}
+    tool_files = []
+    inputs = []
+    if RubyFilesInfo in target:
+        seen_deps = {}
+        for dep_file in sorted(target[RubyFilesInfo].transitive_srcs.to_list(), key = lambda f: f.path):
+            if dep_file.path.endswith((".rb", ".rbi")) and dep_file.path not in owned_paths and dep_file.path not in seen_deps:
+                seen_deps[dep_file.path] = True
+                _stage(tool_files, inputs, "dx-sorbet/dep/" + staged_path(dep_file), dep_file)
+    return real_context(tool_files = tool_files, inputs = inputs)
+
+def _scalafix_hook(target, _ctx, _resolved, _capability, what, _shared):
+    (owned, aux) = _scalafix_context(target, what)
+    tool_files = []
+    inputs = []
+    for index, jar in enumerate(owned):
+        _stage(tool_files, inputs, "dx-scalafix/owned/%d-%s" % (index, jar.basename), jar)
+    for index, jar in enumerate(aux):
+        _stage(tool_files, inputs, "dx-scalafix/aux/%d-%s" % (index, jar.basename), jar)
+    return real_context(tool_files = tool_files, inputs = inputs)
+
+def _fsharplint_hook(target, ctx, _resolved, _capability, what, _shared):
+    (refs, context) = _fsharplint_context(target, ctx, what)
+    tool_files = []
+    inputs = []
+    for index, lib in enumerate(refs):
+        _stage(tool_files, inputs, "dx-fsharplint/ref/%d-%s" % (index, lib.basename), lib)
+    _stage(tool_files, inputs, "dx-fsharplint/context.json", context)
+    return real_context(tool_files = tool_files, inputs = inputs)
+
+def _jet_hook(target, ctx, resolved, _capability, _what, shared):
+    if JuliaInfo not in target:
+        return _without(resolved, "jet")
+    (staged, config) = _jet_staging(target, ctx, shared.path_to_file)
+    tool_files = []
+    inputs = []
+    if config != None:
+        for (rel, staged_file) in staged:
+            _stage(tool_files, inputs, rel, staged_file)
+        _stage(tool_files, inputs, "dx-jet/config.toml", config)
+    return real_context(tool_files = tool_files, inputs = inputs)
+
+def _helm_hook(target, ctx, _resolved, _capability, what, _shared):
+    context = _helm_context(target, ctx, what)
+    tool_files = []
+    inputs = []
+    _stage(tool_files, inputs, "dx-helm/context.json", context)
+    inputs.append(ctx.file._kubeconform)
+    pairs = []
+    if HelmChartInfo in target:
+        for f in target[HelmChartInfo].dependencies:
+            ws_path = f.short_path
+            if ".." in ws_path.split("/") or ws_path.startswith("../"):
+                continue
+            pairs.append((ws_path, f, False))
+    return real_context(
+        tool_files = tool_files,
+        inputs = inputs,
+        resolve_pairs = pairs,
+        options = {"path_tools": [("kubeconform", ctx.file._kubeconform)]},
     )
 
-RealShardProbeInfo = provider(
-    doc = "Shard names the shard probe found for one target and capability.",
-    fields = {
-        "capability": "lint, format or typecheck",
-        "shards": "sorted shard names whose tool filter keeps a resolved stage",
-    },
+def _dart_hook(target, ctx, _resolved, capability, what, _shared):
+    config_packages = []
+    config_files = []
+    if capability != "format" and hasattr(ctx.rule.attr, "aspect_hints"):
+        for hint_target in ctx.rule.attr.aspect_hints:
+            if DxDartConfigInfo in hint_target:
+                config_packages.extend(hint_target[DxDartConfigInfo].packages.to_list())
+                config_files.extend(hint_target[DxDartConfigInfo].srcs.to_list())
+                config_files.extend(hint_target[DxDartConfigInfo].resources.to_list())
+    (package_config, dart_options, stubs) = _dart_context(target, ctx, what, capability, config_packages)
+
+    pairs = []
+    reserved = []
+    if capability != "format":
+        dart_info = _dart_info(target, what)
+        dart_files = [f for f in dart_info.transitive_srcs.to_list() if f.extension == "dart"]
+        dart_files += [f for f in dart_info.transitive_resources.to_list() if f.basename == "_embedder.yaml"]
+        for f in dart_files + config_files:
+            ws_path = f.short_path
+            if ws_path.startswith("../"):
+                ws_path = dart_external_root(ws_path)
+            if ".." in ws_path.split("/"):
+                continue
+            pairs.append((ws_path, f, False))
+        for (stub_path, _) in stubs:
+            reserved.append((stub_path, "generated pubspec.yaml stub collides with the staged source " + stub_path))
+
+    def _with_config(hint, config_rel):
+        # dart format reads `formatter:` from the nearest analysis_options.yaml, so the
+        # hinted config (or an empty one) sits at the scratch root and nowhere else.
+        options = dart_options
+        tool_files = []
+        inputs = []
+        if hint != None:
+            options = hint.config
+        else:
+            inputs.append(options)
+        if config_rel != _DART_OPTIONS_REL:
+            tool_files.append((_DART_OPTIONS_REL, options))
+        _stage(tool_files, inputs, _DART_PACKAGE_CONFIG_REL, package_config)
+        for (stub_path, stub) in stubs:
+            if stub_path == config_rel:
+                fail(what + ": generated pubspec.yaml stub collides with the config " + stub_path)
+            _stage(tool_files, inputs, stub_path, stub)
+        return struct(tool_files = tool_files, inputs = inputs)
+
+    return real_context(resolve_pairs = pairs, reserved = reserved, with_config = _with_config)
+
+def _jvm_check_hook(tool):
+    def _hook(target, _ctx, resolved, _capability, _what, _shared):
+        if JvmCheckInfo not in target or target[JvmCheckInfo].tool != tool:
+            return _without(resolved, tool)
+        log = target[JvmCheckInfo].log
+        return real_context(upstream = [log], late_inputs = [log])
+
+    return _hook
+
+def _go_analysis_hook(tool):
+    def _hook(target, _ctx, resolved, _capability, what, _shared):
+        if GoAnalysisInfo not in target:
+            if GoArchive not in target:
+                return _without(resolved, tool)
+            fail(what + ": " + tool + " needs the Go analysis aspect report for a rules_go target")
+        report = target[GoAnalysisInfo].reports[tool]
+        return real_context(upstream = [report], late_inputs = [report])
+
+    return _hook
+
+def _compile_check_hook(tool):
+    def _hook(target, _ctx, resolved, _capability, _what, _shared):
+        if CompileCheckInfo not in target or target[CompileCheckInfo].tool != tool:
+            return _without(resolved, tool)
+        info = target[CompileCheckInfo]
+        tool_files = []
+        inputs = []
+        for i in range(len(info.diagnostics)):
+            inputs.append(info.diagnostics[i])
+            stem = info.diagnostics[i].basename.rpartition(".")[0]
+            _stage(tool_files, inputs, "dx-compile-check/" + stem + "/exit", info.statuses[i])
+        return real_context(upstream = info.diagnostics, late_tool_files = tool_files, late_inputs = inputs)
+
+    return _hook
+
+def _tsc_hook(target, _ctx, resolved, _capability, _what, _shared):
+    if TscInfo not in target:
+        return _without(resolved, "tsc")
+    info = target[TscInfo]
+    return real_context(upstream = [info.stdout], late_tool_files = [("dx-tsc/exit", info.status)], late_inputs = [info.stdout, info.status])
+
+def _roslyn_hook(target, _ctx, _resolved, _capability, what, _shared):
+    if RoslynInfo not in target:
+        fail(what + ": roslyn and csc need a csharp_* target compiled with the SDK analyzers")
+    info = target[RoslynInfo]
+    tool_files = []
+    inputs = []
+    for i in range(len(info.tfms)):
+        inputs.append(info.sarifs[i])
+        _stage(tool_files, inputs, "dx-roslyn/" + info.tfms[i] + "/exit", info.statuses[i])
+    return real_context(upstream = info.sarifs, late_tool_files = tool_files, late_inputs = inputs)
+
+def _fsc_hook(target, _ctx, _resolved, _capability, what, _shared):
+    if FscUnsupportedInfo in target:
+        fail(what + ": fsc is unavailable: " + target[FscUnsupportedInfo].reason)
+    if FscInfo not in target:
+        fail(what + ": fsc needs an fsharp_* target")
+    info = target[FscInfo]
+    tool_files = []
+    inputs = []
+    for i in range(len(info.tfms)):
+        inputs.append(info.logs[i])
+        _stage(tool_files, inputs, "dx-fsc/" + info.tfms[i] + "/exit", info.statuses[i])
+    return real_context(upstream = info.logs, late_tool_files = tool_files, late_inputs = inputs)
+
+def _clang_info(target, what):
+    if ClangSyntaxInfo not in target:
+        fail(what + ": clang_syntax and clang_tidy need a cc_*, objc_* or cuda_* target with compile actions (a header-only library needs --features=parse_headers)")
+    return target[ClangSyntaxInfo]
+
+def _clang_tidy_hook(target, _ctx, _resolved, _capability, what, _shared):
+    info = _clang_info(target, what)
+    return real_context(upstream = info.tidy_diagnostics, late_inputs = info.tidy_diagnostics)
+
+def _clang_syntax_hook(target, _ctx, _resolved, _capability, what, _shared):
+    info = _clang_info(target, what)
+    tool_files = []
+    inputs = []
+    for i in range(len(info.diagnostics)):
+        inputs.append(info.diagnostics[i])
+        stem = info.diagnostics[i].basename.rpartition(".")[0]
+        _stage(tool_files, inputs, "dx-clang-syntax/" + stem + "/exit", info.statuses[i])
+        _stage(tool_files, inputs, "dx-clang-syntax/" + stem + "/driver", info.drivers[i])
+    return real_context(upstream = info.diagnostics, late_tool_files = tool_files, late_inputs = inputs)
+
+def _nvcc_syntax_hook(target, _ctx, _resolved, _capability, what, _shared):
+    if NvccSyntaxInfo not in target:
+        fail(what + ": nvcc_syntax needs a cuda_library or cuda_objects target with a CudaCompile action (a header-only library has none)")
+    info = target[NvccSyntaxInfo]
+    tool_files = []
+    inputs = []
+    for i in range(len(info.diagnostics)):
+        inputs.append(info.diagnostics[i])
+        stem = info.diagnostics[i].basename.rpartition(".")[0]
+        _stage(tool_files, inputs, "dx-nvcc-syntax/" + stem + "/exit", info.statuses[i])
+    return real_context(upstream = info.diagnostics, late_tool_files = tool_files, late_inputs = inputs)
+
+def _prettier_hook(target, _ctx, _resolved, _capability, _what, _shared):
+    if SqlDialectInfo not in target:
+        return real_context()
+    return real_context(options = {"dialect": target[SqlDialectInfo].dialect})
+
+def _rustfmt_hook(target, _ctx, resolved, _capability, what, shared):
+    if not shared.has_toolchain:
+        fail(what + ": rustfmt needs the Rust family aspect")
+    if _rust_common.crate_info in target:
+        edition = target[_rust_common.crate_info].edition
+    elif _rust_common.test_crate_info in target:
+        edition = target[_rust_common.test_crate_info].crate.edition
+    else:
+        edition = RUST_EDITION
+    generated = generated_source_paths(shared.direct_files)
+    pruned = None
+    if len(generated) > 0:
+        pruned = prune_tool_generated_sources(resolved, generated, "rustfmt")
+    return real_context(resolved = pruned, options = {"edition": edition})
+
+def _clippy_hook(target, _ctx, _resolved, _capability, what, shared):
+    if not shared.has_toolchain:
+        fail(what + ": clippy needs the Rust family aspect")
+    diagnostics = []
+    if OutputGroupInfo in target and "clippy_output" in target[OutputGroupInfo]:
+        diagnostics = target[OutputGroupInfo]["clippy_output"].to_list()
+    return real_context(upstream = diagnostics, late_inputs = diagnostics, delegated = len(diagnostics) > 0)
+
+def _rustc_hook(target, _ctx, _resolved, _capability, what, shared):
+    if not shared.has_toolchain:
+        fail(what + ": rustc needs the Rust family aspect")
+    diagnostics = []
+    if OutputGroupInfo in target:
+        group = rustc_diagnostics_group(target[OutputGroupInfo])
+        if group:
+            diagnostics = target[OutputGroupInfo][group].to_list()
+    return real_context(upstream = diagnostics, late_inputs = diagnostics, delegated = len(diagnostics) > 0)
+
+def _ty_hook(target, _ctx, _resolved, _capability, _what, _shared):
+    if _PyInfo not in target:
+        return real_context()
+    transitive = getattr(target[_PyInfo], "transitive_sources", None)
+    if transitive == None:
+        return real_context()
+    pairs = []
+    search_dirs = []
+    for f in transitive.to_list():
+        ws_path = f.short_path
+        if ".." not in ws_path.split("/") and (ws_path.endswith(".py") or ws_path.endswith(".pyi")):
+            pairs.append((ws_path, f, False))
+    for f in transitive.to_list():
+        if f.is_directory and f.short_path.endswith(".install"):
+            search_dirs.append(f)
+    return real_context(early_inputs = search_dirs, resolve_pairs = pairs, options = {"search_paths": search_dirs})
+
+def _qmllint_hook(target, _ctx, _resolved, _capability, _what, _shared):
+    context_files = list(target[DefaultInfo].files.to_list())
+    if QmlContextInfo in target:
+        context_files.extend(target[QmlContextInfo].files.to_list())
+    pairs = []
+    for f in context_files:
+        ws_path = f.short_path
+        if ws_path.startswith("../"):
+            ws_path = "_external/" + ws_path[3:]
+        if ".." in ws_path.split("/"):
+            continue
+        if f.basename != "qmldir" and f.extension not in _QML_CONTEXT_EXTENSIONS:
+            continue
+        pairs.append((ws_path, f, False))
+    return real_context(resolve_pairs = pairs)
+
+def _default_files_hook(extensions, only_capability = None, except_capability = None):
+    def _hook(target, _ctx, _resolved, capability, _what, _shared):
+        if only_capability != None and capability != only_capability:
+            return real_context()
+        if capability == except_capability:
+            return real_context()
+        pairs = []
+        for f in target[DefaultInfo].files.to_list():
+            ws_path = f.short_path
+            if ".." in ws_path.split("/") or f.extension not in extensions:
+                continue
+            pairs.append((ws_path, f, False))
+        return real_context(resolve_pairs = pairs)
+
+    return _hook
+
+def _terraform_hook(target, ctx, resolved, capability, what, shared):
+    if capability != "typecheck":
+        return real_context()
+
+    # Local module sources of deps are staged next to the owned files; the providers
+    # are offline mirrors whose roots reach the runner as -plugin-dir values.
+    pairs = _default_files_hook(["tf", "json", "hcl"])(target, ctx, resolved, capability, what, shared).resolve_pairs
+    mirror_roots = {}
+    provider_files = []
+    if TerraformModuleInfo in target:
+        for provider in target[TerraformModuleInfo].transitive_providers.to_list():
+            mirror_roots[provider.mirror_root] = True
+            provider_files.extend(provider.files.to_list())
+
+    # Relative to the execution root; the runner makes each root absolute. May be empty.
+    env = [real_request_tool_env("DX_TERRAFORM_PLUGIN_DIRS", "|".join(sorted(mirror_roots.keys())))]
+    return real_context(early_inputs = provider_files, resolve_pairs = pairs, env = env)
+
+def _opa_hook(target, _ctx, _resolved, _capability, _what, _shared):
+    if RegoInfo not in target:
+        return real_context()
+    pairs = []
+    for f in target[RegoInfo].transitive_srcs.to_list():
+        ws_path = f.short_path
+        if ".." in ws_path.split("/") or f.extension != "rego":
+            continue
+        pairs.append((ws_path, f, False))
+    return real_context(resolve_pairs = pairs)
+
+def _bicep_hook(target, _ctx, _resolved, _capability, _what, _shared):
+    if BicepInfo not in target:
+        return real_context()
+    tool_files = []
+    inputs = []
+    for f in target[BicepInfo].transitive_registry.to_list():
+        rel = f.short_path.partition("/home/.bicep/")[2]
+        if rel:
+            _stage(tool_files, inputs, "dx-bicep/home/.bicep/" + rel, f)
+    pairs = []
+    for f in depset(transitive = [target[BicepInfo].transitive_srcs, target[BicepInfo].transitive_data]).to_list():
+        ws_path = f.short_path
+        if ".." in ws_path.split("/"):
+            continue
+        pairs.append((ws_path, f, False))
+    return real_context(tool_files = tool_files, inputs = inputs, resolve_pairs = pairs)
+
+def _closure_hook(tool):
+    (provider, closure_files, strict) = _CLOSURE_STAGING[tool]
+
+    def _hook(target, _ctx, _resolved, _capability, _what, _shared):
+        if provider not in target:
+            return real_context()
+        return real_context(resolve_pairs = [(ws_path, f, strict) for (ws_path, f) in closure_files(target)])
+
+    return _hook
+
+def _buf_hook(target, _ctx, _resolved, _capability, _what, _shared):
+    if ProtoInfo not in target:
+        return real_context()
+    pairs = []
+    proto_roots = sorted([r for r in target[ProtoInfo].transitive_proto_path.to_list() if r != "."], key = lambda r: -len(r))
+    for f in target[ProtoInfo].transitive_sources.to_list():
+        ws_path = f.path
+        for root in proto_roots:
+            if ws_path.startswith(root + "/"):
+                ws_path = ws_path[len(root) + 1:]
+                break
+        if ".." in ws_path.split("/"):
+            continue
+        pairs.append((ws_path, f, False))
+    return real_context(resolve_pairs = pairs)
+
+def _psscriptanalyzer_hook(target, ctx, _resolved, _capability, _what, _shared):
+    context_files = list(target[DefaultInfo].files.to_list())
+    upstream = getattr(ctx.rule.attr, "upstream", None)
+    if type(upstream) == "Target" and _PwshInfo in upstream:
+        context_files.extend(upstream[DefaultInfo].default_runfiles.files.to_list())
+    pairs = []
+    module_roots = {}
+    for f in context_files:
+        ws_path = f.short_path
+        if f.extension not in ["ps1", "psd1", "psm1"]:
+            continue
+        if ws_path.startswith("../"):
+            if "_toolchains__" in ws_path.split("/")[1]:
+                continue
+            ws_path = "external/" + ws_path[3:]
+        if ".." in ws_path.split("/"):
+            continue
+        if f.extension in ["psd1", "psm1"]:
+            module_dir = ws_path.rpartition("/")[0]
+            module_roots[module_dir.rpartition("/")[0] or "."] = True
+        pairs.append((ws_path, f, False))
+    env = [real_request_tool_env("DX_PWSH_MODULE_ROOTS", "|".join(sorted(module_roots.keys())))]
+    return real_context(resolve_pairs = pairs, env = env)
+
+def _vale_hook(target, _ctx, resolved, _capability, what, _shared):
+    converters = []
+    for stage in resolved:
+        if stage["tool"] == "vale":
+            for converter in _vale_converters(target, stage["classes"], what):
+                if converter[0] not in [c[0] for c in converters]:
+                    converters.append(converter)
+    return real_context(
+        inputs = [converter.executable for (_, converter) in converters],
+        run_tools = [converter for (_, converter) in converters],
+        options = {"path_tools": [(name, converter.executable) for (name, converter) in converters]},
+    )
+
+def _gofumpt_hook(_target, ctx, _resolved, _capability, what, _shared):
+    return real_context(options = {"edition": _gofumpt_lang(ctx, what)})
+
+def _upstream_files(srcs, kind):
+    if srcs == None:
+        return struct(files = [], error = "upstream " + kind + " target has no readable srcs; unsupported ownership is unchecked, not clean")
+    return struct(files = list(srcs), error = "")
+
+def _proto_sources(target, ctx):
+    if ProtoInfo not in target:
+        return None
+    return _upstream_files(getattr(ctx.rule.files, "srcs", None), "proto")
+
+def _rust_sources(target, ctx):
+    if _rust_common.crate_info not in target and _rust_common.test_crate_info not in target:
+        return None
+    return _upstream_files(getattr(ctx.rule.files, "srcs", None), "rust")
+
+def _cc_sources(target, ctx):
+    if CcInfo not in target:
+        return None
+    srcs = getattr(ctx.rule.files, "srcs", None)
+    hdrs = getattr(ctx.rule.files, "hdrs", None)
+    non_arc_srcs = getattr(ctx.rule.files, "non_arc_srcs", None)
+    if srcs == None and hdrs == None and non_arc_srcs == None:
+        return struct(files = [], error = "upstream cc target has no readable srcs, hdrs or non_arc_srcs; unsupported ownership is unchecked, not clean")
+    files = []
+    for group in [srcs, hdrs, non_arc_srcs]:
+        if group != None:
+            files.extend(group)
+    return struct(files = files, error = "")
+
+def _rust_harness_sources(target, capability, direct_sources):
+    """Adds the sources of a Rust test crate's harness to a typecheck's direct sources."""
+    if not inherits_test_crate_sources(capability):
+        return direct_sources
+    harness = None
+    if _rust_common.test_crate_info in target:
+        harness = target[_rust_common.test_crate_info].crate
+    elif _rust_common.crate_info in target and target[_rust_common.crate_info].is_test:
+        harness = target[_rust_common.crate_info]
+    if harness == None:
+        return direct_sources
+    return merge_inherited_sources(direct_sources, harness.srcs.to_list(), "rust")
+
+def _rust_toolchain_file(ctx, name):
+    """Returns one tool file from the resolved Rust toolchains."""
+    if name == "rustc":
+        return rust_toolchain_rustc(ctx)
+    clippy_driver, rustfmt = rust_toolchain_tools(ctx)
+    return clippy_driver if name == "clippy_driver" else rustfmt
+
+# The core runs the hooks in this order and no other.
+_HOOK_ORDER = [
+    "spotbugs",
+    "dialyzer",
+    "zanuda",
+    "luals",
+    "phpstan",
+    "sorbet",
+    "scalafix",
+    "fsharplint",
+    "jet",
+    "helm",
+    "dart",
+] + _JVM_CHECK_TOOLS + _GO_ANALYSIS_TOOLS + COMPILE_CHECK_TOOLS + [
+    "tsc",
+    "roslyn",
+    "csc",
+    "fsc",
+    "clang_syntax",
+    "clang_tidy",
+    "nvcc_syntax",
+    "prettier",
+    "rustfmt",
+    "clippy",
+    "rustc",
+    "ty",
+    "qmllint",
+    "cue",
+    "pkl",
+    "terraform",
+    "opa",
+    "bicep",
+    "jsonnetfmt",
+    "jsonnet_lint",
+    "redocly",
+    "capnp",
+    "flatc",
+    "thrift",
+    "avro_tools",
+    "buf",
+    "psscriptanalyzer",
+    "vale",
+    "gofumpt",
+]
+
+_CONTEXT_HOOKS = {
+    "spotbugs": _spotbugs_hook,
+    "dialyzer": _dialyzer_hook,
+    "zanuda": _zanuda_hook,
+    "luals": _luals_hook,
+    "phpstan": _phpstan_hook,
+    "sorbet": _sorbet_hook,
+    "scalafix": _scalafix_hook,
+    "fsharplint": _fsharplint_hook,
+    "jet": _jet_hook,
+    "helm": _helm_hook,
+    "dart": _dart_hook,
+    "tsc": _tsc_hook,
+    "roslyn": _roslyn_hook,
+    "csc": _roslyn_hook,
+    "fsc": _fsc_hook,
+    "clang_syntax": _clang_syntax_hook,
+    "clang_tidy": _clang_tidy_hook,
+    "nvcc_syntax": _nvcc_syntax_hook,
+    "prettier": _prettier_hook,
+    "rustfmt": _rustfmt_hook,
+    "clippy": _clippy_hook,
+    "rustc": _rustc_hook,
+    "ty": _ty_hook,
+    "qmllint": _qmllint_hook,
+    "cue": _default_files_hook(["cue"]),
+    "pkl": _default_files_hook(["pkl"], except_capability = "format"),
+    "terraform": _terraform_hook,
+    "opa": _opa_hook,
+    "bicep": _bicep_hook,
+    "jsonnetfmt": _default_files_hook(["jsonnet", "libsonnet", "json"]),
+    "jsonnet_lint": _default_files_hook(["jsonnet", "libsonnet", "json"]),
+    "redocly": _default_files_hook(["yaml", "yml", "json"]),
+    "buf": _buf_hook,
+    "psscriptanalyzer": _psscriptanalyzer_hook,
+    "vale": _vale_hook,
+    "gofumpt": _gofumpt_hook,
+} | {tool: _jvm_check_hook(tool) for tool in _JVM_CHECK_TOOLS} | {
+    tool: _go_analysis_hook(tool)
+    for tool in _GO_ANALYSIS_TOOLS
+} | {
+    tool: _compile_check_hook(tool)
+    for tool in COMPILE_CHECK_TOOLS
+} | {
+    tool: _closure_hook(tool)
+    for tool in _CLOSURE_STAGING.keys()
+}
+
+_CFG = real_config(
+    tools = _REAL_TOOL_TABLE,
+    shard_specs = _REAL_SHARD_SPECS,
+    hook_order = _HOOK_ORDER,
+    context_hooks = _CONTEXT_HOOKS,
+    source_recognizers = [_proto_sources, _rust_sources, _cc_sources],
+    harness_sources = _rust_harness_sources,
+    toolchain = struct(type = RUST_TOOLCHAIN_TYPE, file = _rust_toolchain_file),
 )
+
+def real_wired_tools():
+    """Maps each capability to the sorted tool names the table wires for it."""
+    return _real_wired_tools(_CFG)
+
+def real_policy_error(policy, capability, what):
+    """Validates the selected workspace policy for one real capability."""
+    return _real_policy_error(_CFG, policy, capability, what)
+
+def upstream_direct_sources(target, ctx):
+    """Derives directly owned sources for an ordinary upstream native target."""
+    return real_upstream_direct_sources(_CFG.source_recognizers, target, ctx)
+
+def real_quality_resource_set(tools):
+    """Returns the resource_set callback for the costliest tier among the launched tools."""
+    return _real_quality_resource_set(_CFG, tools)
+
+def real_tool_table_error():
+    """Validates the real tool table and that a built shard runs every tool capability."""
+    return _real_tool_table_error(_CFG)
 
 def real_shard_result_stems():
     """Maps each shard's dx_results stem ("real-" + capability + suffix) to its shard name."""
-    return {
-        "real-" + shard["capability"] + shard["suffix"]: shard_name
-        for shard_name, shard in _REAL_SHARDS.items()
-    }
+    return _real_shard_result_stems(_CFG)
 
 def real_wired_capabilities():
     """Maps each tool to the sorted capabilities a built shard aspect runs for it."""
-    wired = {}
-    for shard in _REAL_SHARDS.values():
-        for tool in shard["tools"]:
-            if shard["capability"] not in wired.setdefault(tool, []):
-                wired[tool].append(shard["capability"])
-    return {tool: sorted(caps) for tool, caps in wired.items()}
+    return _real_wired_capabilities(_CFG)
 
-def _probe_shards(resolved, capability):
-    """Names every shard of the capability whose tool filter keeps a stage."""
-    shards = []
-    for shard_name in sorted(_REAL_SHARDS.keys()):
-        shard = _REAL_SHARDS[shard_name]
-        if shard["capability"] != capability:
-            continue
-        if len(filter_pipeline_by_tools(resolved, shard["tools"])) > 0:
-            shards.append(shard_name)
-    return shards
+real_tool_table_shape_error = _real_tool_table_shape_error
+RealShardProbeInfo = _RealShardProbeInfo
 
-def _make_real_probe_impl(capability):
-    """Makes the shard probe impl for one capability."""
-
-    def _impl(target, ctx):
-        what = "real_aspect (" + str(target.label) + ")"
-        (resolved, _direct_files, _path_to_file) = _real_resolved_stages(target, ctx, capability, what)
-        if len(resolved) == 0:
-            return []
-        shards = _probe_shards(resolved, capability)
-        if len(shards) == 0:
-            return []
-        out = ctx.actions.declare_file(target.label.name + ".dx-shards-" + capability + ".json")
-        ctx.actions.write(out, json.encode({"shards": shards}))
-        return [
-            OutputGroupInfo(dx_shards = depset([out])),
-            RealShardProbeInfo(capability = capability, shards = shards),
-        ]
-
-    return _impl
+def _make_real_aspect(shard_name):
+    return real_make_aspect(_CFG, shard_name)
 
 def _make_real_probe_aspect(capability):
-    """Builds the tool-free shard probe aspect for one capability."""
-    return aspect(
-        implementation = _make_real_probe_impl(capability),
-        attr_aspects = ["aspect_hints"],
-        attrs = {"_policy": _REAL_BASE_ATTRS["_policy"]},
-        doc = "Writes the " + capability + " shard names each target needs to the dx_shards output group.",
-    )
+    return real_make_probe_aspect(_CFG, capability)
 
 real_lint_aspect = _make_real_aspect("real_lint")
 
