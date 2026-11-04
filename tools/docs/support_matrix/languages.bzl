@@ -334,6 +334,9 @@ PLATFORM_NOT_APPLICABLE = {
     "haskell": {
         "windows_arm64": "GHC 9.10.3 ships no Windows arm64 bindist",
     },
+    "julia": {
+        "windows_arm64": "julialang.org and rules_julia 0.8.0 ship no Windows arm64 Julia build",
+    },
     "ocaml": {
         "windows_arm64": "conda-forge ships no win-arm64 OCaml package",
         "windows_x86_64": "conda-forge win-64 OCaml stops at 5.3.0, below the pinned 5.5.2",
