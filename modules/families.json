@@ -21,32 +21,6 @@
       ],
       "toolchains": []
     },
-    "ansible": {
-      "aspects": [
-        "real_ansible_lint_aspect"
-      ],
-      "bazel_deps": [],
-      "dirs": [
-        "ansible"
-      ],
-      "extensions": [],
-      "file_extensions": [],
-      "gazelle": [],
-      "repo_rules": [],
-      "toolchains": []
-    },
-    "api_spec": {
-      "aspects": [],
-      "bazel_deps": [],
-      "dirs": [
-        "api_spec"
-      ],
-      "extensions": [],
-      "file_extensions": [],
-      "gazelle": [],
-      "repo_rules": [],
-      "toolchains": []
-    },
     "appimage": {
       "aspects": [],
       "bazel_deps": [],
@@ -75,21 +49,6 @@
         ".m",
         ".mm",
         ".plist"
-      ],
-      "gazelle": [],
-      "repo_rules": [],
-      "toolchains": []
-    },
-    "asciidoc": {
-      "aspects": [],
-      "bazel_deps": [],
-      "dirs": [
-        "asciidoc"
-      ],
-      "extensions": [],
-      "file_extensions": [
-        ".adoc",
-        ".asciidoc"
       ],
       "gazelle": [],
       "repo_rules": [],
@@ -129,23 +88,6 @@
         "@dx_elixir_toolchains//:all",
         "@dx_erlang_toolchains//:all"
       ]
-    },
-    "bicep": {
-      "aspects": [
-        "real_bicep_format_aspect",
-        "real_bicep_lint_aspect"
-      ],
-      "bazel_deps": [],
-      "dirs": [
-        "bicep"
-      ],
-      "extensions": [],
-      "file_extensions": [
-        ".bicep"
-      ],
-      "gazelle": [],
-      "repo_rules": [],
-      "toolchains": []
     },
     "cc": {
       "aspects": [
@@ -193,58 +135,47 @@
         "@llvm//toolchain:all"
       ]
     },
-    "cloudformation": {
-      "aspects": [
-        "real_cloudformation_lint_aspect"
-      ],
-      "bazel_deps": [],
-      "dirs": [
-        "cloudformation"
-      ],
-      "extensions": [],
-      "file_extensions": [],
-      "gazelle": [],
-      "repo_rules": [],
-      "toolchains": []
-    },
-    "cmake": {
-      "aspects": [
-        "real_cmake_format_aspect",
-        "real_cmake_lint_aspect"
-      ],
-      "bazel_deps": [],
-      "dirs": [
-        "cmake"
-      ],
-      "extensions": [],
-      "file_extensions": [
-        ".cmake"
-      ],
-      "gazelle": [],
-      "repo_rules": [],
-      "toolchains": []
-    },
     "core": {
       "aspects": [
+        "real_ansible_lint_aspect",
+        "real_bicep_format_aspect",
+        "real_bicep_lint_aspect",
+        "real_cloudformation_lint_aspect",
+        "real_cmake_format_aspect",
+        "real_cmake_lint_aspect",
         "real_cue_format_aspect",
         "real_cue_typecheck_aspect",
         "real_dockerfile_lint_aspect",
         "real_format_aspect",
         "real_format_probe_aspect",
+        "real_go_format_aspect",
+        "real_go_lint_aspect",
+        "real_go_typecheck_aspect",
         "real_html_template_format_aspect",
         "real_html_template_lint_aspect",
         "real_jsonnet_format_aspect",
         "real_jsonnet_lint_aspect",
+        "real_kubernetes_lint_aspect",
         "real_latex_format_aspect",
         "real_latex_lint_aspect",
         "real_lint_aspect",
         "real_lint_probe_aspect",
+        "real_make_format_aspect",
+        "real_make_lint_aspect",
         "real_nix_format_aspect",
         "real_nix_lint_aspect",
         "real_pkl_format_aspect",
         "real_pkl_typecheck_aspect",
+        "real_rego_format_aspect",
+        "real_rego_lint_aspect",
+        "real_rego_typecheck_aspect",
         "real_shell_format_aspect",
         "real_shell_lint_aspect",
+        "real_sql_format_aspect",
+        "real_sql_lint_aspect",
+        "real_terraform_format_aspect",
+        "real_terraform_lint_aspect",
+        "real_terraform_typecheck_aspect",
         "real_text_lint_aspect",
         "real_typecheck_aspect",
         "real_typecheck_probe_aspect",
@@ -268,9 +199,14 @@
         "yaml.bzl"
       ],
       "dirs": [
+        "ansible",
+        "asciidoc",
         "bcr_test_module",
+        "bicep",
         "ci",
         "cli",
+        "cloudformation",
+        "cmake",
         "config",
         "deploy",
         "dockerfile",
@@ -279,10 +215,18 @@
         "env",
         "examples",
         "gazelle",
+        "go",
+        "helm",
+        "kubernetes",
         "libs",
+        "make",
         "modules",
         "patches",
         "quality",
+        "rego",
+        "rst",
+        "sql",
+        "terraform",
         "third_party",
         "tools"
       ],
@@ -298,17 +242,31 @@
         "@windows_support//windows:extensions.bzl%windows_sdk"
       ],
       "file_extensions": [
+        ".adoc",
+        ".asciidoc",
         ".bazel",
+        ".bicep",
         ".bzl",
+        ".cmake",
+        ".go",
         ".json",
         ".md",
+        ".mk",
+        ".rego",
+        ".rst",
         ".sh",
+        ".sql",
+        ".tf",
+        ".tfvars",
         ".toml",
+        ".tpl",
         ".xml",
         ".yaml",
         ".yml"
       ],
-      "gazelle": [],
+      "gazelle": [
+        "//gazelle/go"
+      ],
       "repo_rules": [
         "//quality/artifacts/hub_test:repos.bzl%hub_fixture_repo",
         "@bazel_tools//tools/build_defs/repo:http.bzl%http_archive",
@@ -437,6 +395,7 @@
         "rules_rust_prost"
       ],
       "dirs": [
+        "api_spec",
         "avro",
         "capnproto",
         "flatbuffers",
@@ -454,26 +413,6 @@
         ".thrift"
       ],
       "gazelle": [],
-      "repo_rules": [],
-      "toolchains": []
-    },
-    "go": {
-      "aspects": [
-        "real_go_format_aspect",
-        "real_go_lint_aspect",
-        "real_go_typecheck_aspect"
-      ],
-      "bazel_deps": [],
-      "dirs": [
-        "go"
-      ],
-      "extensions": [],
-      "file_extensions": [
-        ".go"
-      ],
-      "gazelle": [
-        "//gazelle/go"
-      ],
       "repo_rules": [],
       "toolchains": []
     },
@@ -501,20 +440,6 @@
         "@dx_haskell_toolchains//cc:all",
         "@dx_haskell_toolchains//toolchains:all"
       ]
-    },
-    "helm": {
-      "aspects": [],
-      "bazel_deps": [],
-      "dirs": [
-        "helm"
-      ],
-      "extensions": [],
-      "file_extensions": [
-        ".tpl"
-      ],
-      "gazelle": [],
-      "repo_rules": [],
-      "toolchains": []
     },
     "js": {
       "aspects": [
@@ -626,20 +551,6 @@
       "repo_rules": [],
       "toolchains": []
     },
-    "kubernetes": {
-      "aspects": [
-        "real_kubernetes_lint_aspect"
-      ],
-      "bazel_deps": [],
-      "dirs": [
-        "kubernetes"
-      ],
-      "extensions": [],
-      "file_extensions": [],
-      "gazelle": [],
-      "repo_rules": [],
-      "toolchains": []
-    },
     "lua": {
       "aspects": [
         "real_lua_format_aspect",
@@ -665,23 +576,6 @@
       "toolchains": [
         "//lua/toolchain:all"
       ]
-    },
-    "make": {
-      "aspects": [
-        "real_make_format_aspect",
-        "real_make_lint_aspect"
-      ],
-      "bazel_deps": [],
-      "dirs": [
-        "make"
-      ],
-      "extensions": [],
-      "file_extensions": [
-        ".mk"
-      ],
-      "gazelle": [],
-      "repo_rules": [],
-      "toolchains": []
     },
     "msix": {
       "aspects": [],
@@ -820,38 +714,6 @@
         "@python_interpreters//:all"
       ]
     },
-    "rego": {
-      "aspects": [
-        "real_rego_format_aspect",
-        "real_rego_lint_aspect",
-        "real_rego_typecheck_aspect"
-      ],
-      "bazel_deps": [],
-      "dirs": [
-        "rego"
-      ],
-      "extensions": [],
-      "file_extensions": [
-        ".rego"
-      ],
-      "gazelle": [],
-      "repo_rules": [],
-      "toolchains": []
-    },
-    "rst": {
-      "aspects": [],
-      "bazel_deps": [],
-      "dirs": [
-        "rst"
-      ],
-      "extensions": [],
-      "file_extensions": [
-        ".rst"
-      ],
-      "gazelle": [],
-      "repo_rules": [],
-      "toolchains": []
-    },
     "ruby": {
       "aspects": [
         "real_ruby_format_aspect",
@@ -890,7 +752,8 @@
         "rules_rust_wasm_bindgen"
       ],
       "dirs": [
-        "rust"
+        "rust",
+        "wasi"
       ],
       "extensions": [
         "@rules_rust//crate_universe:extensions.bzl%crate",
@@ -907,23 +770,6 @@
       "toolchains": [
         "@rust_toolchains//:all"
       ]
-    },
-    "sql": {
-      "aspects": [
-        "real_sql_format_aspect",
-        "real_sql_lint_aspect"
-      ],
-      "bazel_deps": [],
-      "dirs": [
-        "sql"
-      ],
-      "extensions": [],
-      "file_extensions": [
-        ".sql"
-      ],
-      "gazelle": [],
-      "repo_rules": [],
-      "toolchains": []
     },
     "swift": {
       "aspects": [],
@@ -948,37 +794,6 @@
       "toolchains": [
         "//swift/toolchain:all"
       ]
-    },
-    "terraform": {
-      "aspects": [
-        "real_terraform_format_aspect",
-        "real_terraform_lint_aspect",
-        "real_terraform_typecheck_aspect"
-      ],
-      "bazel_deps": [],
-      "dirs": [
-        "terraform"
-      ],
-      "extensions": [],
-      "file_extensions": [
-        ".tf",
-        ".tfvars"
-      ],
-      "gazelle": [],
-      "repo_rules": [],
-      "toolchains": []
-    },
-    "wasi": {
-      "aspects": [],
-      "bazel_deps": [],
-      "dirs": [
-        "wasi"
-      ],
-      "extensions": [],
-      "file_extensions": [],
-      "gazelle": [],
-      "repo_rules": [],
-      "toolchains": []
     },
     "zig": {
       "aspects": [

@@ -225,6 +225,30 @@ fn every_item_is_in_exactly_one_family() {
     );
 }
 
+/// Names of the families other than `core` that add nothing to a consumer's module graph.
+fn weightless_families(kinds: &BTreeMap<&'static str, Kind>) -> Vec<String> {
+    kinds["dirs"]
+        .keys()
+        .filter(|family| family.as_str() != "core")
+        .filter(|family| {
+            ["bazel_deps", "extensions", "toolchains", "repo_rules"]
+                .iter()
+                .all(|key| kinds[key][*family].is_empty())
+        })
+        .cloned()
+        .collect()
+}
+
+#[test]
+fn every_family_but_core_adds_to_the_module_graph() {
+    let kinds = families(&dx_testing::read_runfiles("modules/families.json"));
+    assert_eq!(
+        weightless_families(&kinds),
+        Vec::<String>::new(),
+        "fold these into another family"
+    );
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -277,6 +301,20 @@ mod tests {
             kind(&[("core", &[".a", "b"]), ("go", &[".a"])]),
         );
         assert_eq!(extension_problems(&kinds).len(), 2);
+    }
+
+    #[test]
+    fn family_without_deps_is_weightless() {
+        let mut kinds = BTreeMap::new();
+        for key in ["bazel_deps", "extensions", "toolchains", "repo_rules"] {
+            kinds.insert(key, kind(&[("core", &[]), ("go", &[]), ("rust", &[])]));
+        }
+        kinds.insert("dirs", kind(&[("core", &[]), ("go", &[]), ("rust", &[])]));
+        kinds
+            .get_mut("toolchains")
+            .unwrap()
+            .insert("rust".into(), set(&["t"]));
+        assert_eq!(weightless_families(&kinds), vec!["go".to_owned()]);
     }
 
     #[test]
