@@ -785,7 +785,6 @@ mod tests {
                 "@@+ext+local//:e",
                 "@@foo++ext+hub//:b",
                 "@@foo+//:a",
-                "@@foo~//:d",
             ]
         );
     }

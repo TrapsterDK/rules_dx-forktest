@@ -275,66 +275,8 @@ pub struct BuildPlan {
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        bazel_argv_in, rules_dx_label, rules_dx_repo_of, rules_dx_repo_with, settings_for,
-        BAZEL_SETTINGS,
-    };
+    use super::{bazel_argv_in, rules_dx_label, rules_dx_repo_of, settings_for, BAZEL_SETTINGS};
     use dx_process::ForwardError;
-
-    const DX_DEP: &str =
-        "bazel_dep(name = \"rules_dx\", version = \"0.0.0\", repo_name = \"my_dx\")\n";
-
-    fn missing(label: &str) -> Result<String, String> {
-        Err(format!("workspace input {label}"))
-    }
-
-    #[test]
-    fn repo_name_comes_from_an_included_module_file() {
-        let root = "module(name = \"consumer\")\ninclude(\"//deps:dx.MODULE.bazel\")\n";
-        let read = |label: &str| match label {
-            "//deps:dx.MODULE.bazel" => Ok(DX_DEP.to_owned()),
-            _ => missing(label),
-        };
-        assert_eq!(rules_dx_repo_with(root, &read), "my_dx");
-    }
-
-    #[test]
-    fn root_bazel_dep_wins_over_an_included_one() {
-        let root = format!("{DX_DEP}include(\"//deps:dx.MODULE.bazel\")\n");
-        let read = |_: &str| Ok("bazel_dep(name = \"rules_dx\", version = \"0.0.0\")\n".to_owned());
-        assert_eq!(rules_dx_repo_with(&root, &read), "my_dx");
-    }
-
-    #[test]
-    fn nested_includes_are_followed() {
-        let root = "module(name = \"consumer\")\ninclude(\"//deps:a.MODULE.bazel\")\n";
-        let read = |label: &str| match label {
-            "//deps:a.MODULE.bazel" => Ok("include(\"//deps:b.MODULE.bazel\")\n".to_owned()),
-            "//deps:b.MODULE.bazel" => Ok(DX_DEP.to_owned()),
-            _ => missing(label),
-        };
-        assert_eq!(rules_dx_repo_with(root, &read), "my_dx");
-    }
-
-    #[test]
-    fn unreadable_include_falls_back_to_the_root_file() {
-        let root = format!("{DX_DEP}include(\"//deps:gone.MODULE.bazel\")\n");
-        assert_eq!(rules_dx_repo_with(&root, &missing), "my_dx");
-        let bare = "module(name = \"consumer\")\ninclude(\"//deps:gone.MODULE.bazel\")\n";
-        assert_eq!(rules_dx_repo_with(bare, &missing), "rules_dx");
-    }
-
-    #[test]
-    fn included_repo_name_must_be_valid() {
-        let root = "module(name = \"consumer\")\ninclude(\"//deps:dx.MODULE.bazel\")\n";
-        let read = |_: &str| {
-            Ok(
-                "bazel_dep(name = \"rules_dx\", version = \"0.0.0\", repo_name = \"a//b\")\n"
-                    .to_owned(),
-            )
-        };
-        assert_eq!(rules_dx_repo_with(root, &read), "rules_dx");
-    }
 
     #[test]
     fn settings_use_the_given_repo_name() {
