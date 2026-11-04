@@ -29,6 +29,8 @@ load(
     "REQUIRED_LICENSES",
     "SDK_PACKAGES",
     "SDK_PLATFORM",
+    "app_sdk_layout",
+    "app_sdk_substitutions",
     "artifact_errors",
     "build_tools_build",
     "build_tools_no_match_error",
@@ -411,6 +413,21 @@ def _android_checks():
     checks.append(expect_contains("build-tools build exposes the anchor", tools_build, '"extracted/source.properties"'))
     anchor_build = ndk_build("source.properties")
     checks.append(expect_contains("ndk build exposes the anchor", anchor_build, "extracted/source.properties"))
+    pinned = app_sdk_layout(_request(api_level = 0))
+    checks.append(expect_equal("app sdk dirs", [entry.dest for entry in pinned], ["build-tools/35.0.0", "platforms/android-34", "platform-tools"]))
+    checks.append(expect_equal("app sdk build-tools archive", pinned[0].artifact.archive, "build-tools_r35_linux.zip"))
+    checks.append(expect_equal("app sdk platform archive", pinned[1].artifact.archive, PLATFORM_ARTIFACTS[34].archive))
+    local = app_sdk_layout(_request(local_path = "/sdk", api_level = 33))
+    checks.append(expect_equal("app sdk local dirs", [entry.dest for entry in local], ["build-tools/35.0.0", "platforms/android-33", "platform-tools"]))
+    checks.append(expect_equal("app sdk local has no artifacts", [entry.artifact for entry in local], [None, None, None]))
+    checks.append(expect_equal("app sdk disabled", app_sdk_layout(_request(enabled = False)), []))
+    checks.append(expect_equal("app sdk substitutions", app_sdk_substitutions(_request(api_level = 33)), {
+        "__api_levels__": '"33"',
+        "__build_tools_directory__": "35.0.0",
+        "__build_tools_version__": "35.0.0",
+        "__default_api_level__": "33",
+        "__system_image_dirs__": "",
+    }))
     return checks
 
 def android_metadata_tests(name):

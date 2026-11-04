@@ -136,6 +136,8 @@ PLATFORM_CONSTRAINTS = {
 
 HUB_NAME = "dx_android_sdk"
 
+APP_SDK_HUB_NAME = "dx_androidsdk"
+
 _NDK_REPOSITORY_PREFIX = "dx_android_ndk_"
 
 _BUILD_TOOLS_REPOSITORY_PREFIX = "dx_android_build_tools_"
@@ -294,6 +296,34 @@ def request_errors(request):
 def _level(request):
     """Returns the platform API level one request resolves to."""
     return request.api_level if request.api_level != 0 else DEFAULT_PLATFORM_LEVEL
+
+def app_sdk_layout(request):
+    """Returns the SDK directories rules_android's @androidsdk is assembled from.
+
+    Each entry names the directory under the SDK root, the package kind and the
+    pinned artifact, which is None when the directories come from `local_path`.
+    """
+    if not request.enabled:
+        return []
+    level = _level(request)
+    local = request.local_path != ""
+    host = "linux_x86_64"
+    return [
+        struct(dest = "build-tools/" + BUILD_TOOLS, kind = "build-tools", artifact = None if local else BUILD_TOOLS_ARTIFACTS[host]),
+        struct(dest = "platforms/android-%d" % level, kind = "platform", artifact = None if local else PLATFORM_ARTIFACTS[level]),
+        struct(dest = "platform-tools", kind = "platform-tools", artifact = None if local else PLATFORM_TOOLS_ARTIFACTS[host]),
+    ]
+
+def app_sdk_substitutions(request = None):
+    """Returns the template keys rules_android's SDK BUILD template takes."""
+    level = str(_level(request) if request else DEFAULT_PLATFORM_LEVEL)
+    return {
+        "__api_levels__": '"' + level + '"',
+        "__build_tools_directory__": BUILD_TOOLS,
+        "__build_tools_version__": BUILD_TOOLS,
+        "__default_api_level__": level,
+        "__system_image_dirs__": "",
+    }
 
 def package_repositories(request):
     """Returns {kind: {host_or_level: repository}} for the packages one request fetches."""
@@ -676,6 +706,39 @@ _android_sdk_local_repo = repository_rule(
     },
 )
 
+def _android_app_sdk_repo_impl(ctx):
+    linux_x86_64 = ctx.os.name == "linux" and ctx.os.arch in ["amd64", "x86_64"]
+    if len(ctx.attr.dirs) == 0 or not linux_x86_64:
+        ctx.template("BUILD.bazel", Label("@rules_android//rules/android_sdk_repository:empty.template.bzl"))
+        return ctx.repo_metadata(reproducible = True)
+    for dest, fields in ctx.attr.dirs.items():
+        if ctx.attr.local_path != "":
+            ctx.symlink(ctx.attr.local_path + "/" + dest, dest)
+        else:
+            ctx.download_and_extract(
+                url = fields[0],
+                sha256 = fields[1],
+                canonical_id = fields[2],
+                output = dest,
+                strip_prefix = fields[3],
+            )
+    ctx.symlink(Label("@rules_android//rules/android_sdk_repository:helper.bzl"), "helper.bzl")
+    substitutions = dict(ctx.attr.substitutions)
+    substitutions["__repository_name__"] = ctx.name
+    ctx.template("BUILD.bazel", Label("@rules_android//rules/android_sdk_repository:template.bzl"), substitutions = substitutions)
+    return ctx.repo_metadata(reproducible = True)
+
+_android_app_sdk_repo = repository_rule(
+    implementation = _android_app_sdk_repo_impl,
+    attrs = {
+        "dirs": attr.string_list_dict(
+            doc = "Directory under the SDK root to [url, sha256, canonical_id, strip_prefix].",
+        ),
+        "local_path": attr.string(doc = "Existing Android SDK directory the directories are linked from."),
+        "substitutions": attr.string_dict(doc = "Keys rules_android's SDK BUILD template takes."),
+    },
+)
+
 def _configure_tag(request):
     return struct(
         accept_licenses = list(request.accept_licenses),
@@ -697,6 +760,23 @@ def _declare(rule, name, artifact, kind, mirror):
         directory = artifact.directory,
         sha256 = artifact.sha256,
         url = url,
+    )
+
+def _declare_app_sdk(request):
+    """Declares the @androidsdk replacement rules_android's SDK template builds on."""
+    dirs = {}
+    mirror = request.mirror if request.mirror != "" else DEFAULT_MIRROR
+    for entry in app_sdk_layout(request):
+        if entry.artifact == None:
+            dirs[entry.dest] = []
+            continue
+        url = url_for(entry.artifact, mirror)
+        dirs[entry.dest] = [url, entry.artifact.sha256, canonical_id_for(url, entry.kind), entry.artifact.directory]
+    _android_app_sdk_repo(
+        name = APP_SDK_HUB_NAME,
+        dirs = dirs,
+        local_path = request.local_path,
+        substitutions = app_sdk_substitutions(request),
     )
 
 def _android_sdk_impl(module_ctx):
@@ -750,6 +830,7 @@ def _android_sdk_impl(module_ctx):
                 _declare(_android_platform_tools_repo, repos["platform_tools"][host], PLATFORM_TOOLS_ARTIFACTS[host], "platform-tools", mirror)
             for host in sorted(repos.get("emulator", {}).keys()):
                 _declare(_android_emulator_repo, repos["emulator"][host], EMULATOR_ARTIFACTS[host], "emulator", mirror)
+    _declare_app_sdk(requests[0] if len(requests) == 1 else struct(enabled = False, local_path = "", mirror = "", api_level = 0))
     platform_repos = repos.get("platform", {})
     hub_repo(
         name = HUB_NAME,

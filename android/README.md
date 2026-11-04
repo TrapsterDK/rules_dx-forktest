@@ -350,11 +350,21 @@ sign a generated test bundle with a disposable key and verify it.
 To start a new app, run `dx init --apply <dir>` and add the sources and
 targets above.
 
-Packaging builds read the installed SDK through the upstream
-`androidsdk` repository, which stays empty without `ANDROID_HOME`.
-`rules_android` 0.8.0 needs build-tools 35.0.0 or newer. rules_dx passes no
-`build_tools_version`, so the repository rule uses the highest build-tools
-installed under `ANDROID_HOME`.
+Packaging builds read the `androidsdk` repository from the pinned
+build-tools, platform and platform-tools packages that `android_sdk`
+downloads, so no `ANDROID_HOME` is needed on Linux x86_64. Elsewhere the
+repository is empty. A consumer root swaps it in with:
+
+```python
+android_sdk = use_extension("@rules_dx//android/sdk:repos.bzl", "android_sdk")
+android_sdk.configure(accept_licenses = ["android-sdk-license"])
+use_repo(android_sdk, "dx_androidsdk")
+
+android_sdk_repository = use_extension("@rules_android//rules/android_sdk_repository:rule.bzl", "android_sdk_repository_extension")
+override_repo(android_sdk_repository, androidsdk = "dx_androidsdk")
+```
+
+`rules_android` 0.8.0 needs build-tools 35.0.0 or newer; the pinned ones are 35.0.0.
 
 Breaking change for consumers (#3739): the `rules_android` floor is 0.8.0, the
 patch and its `single_version_override` are gone (remove them from your
