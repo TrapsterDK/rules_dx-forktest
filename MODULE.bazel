@@ -1392,10 +1392,13 @@ _android_ndk_toolchain_repo(
 )
 
 _android_sdk_extension = use_extension("@rules_android//rules/android_sdk_repository:rule.bzl", "android_sdk_repository_extension")
-use_repo(_android_sdk_extension, "androidsdk")
 
 android_sdk = use_extension("//android/sdk:repos.bzl", "android_sdk")
-use_repo(android_sdk, "dx_android_sdk")
+use_repo(android_sdk, "dx_android_sdk", "dx_androidsdk")
+override_repo(_android_sdk_extension, androidsdk = "dx_androidsdk")
+
+rules_java_toolchains = use_extension("@rules_java//java:extensions.bzl", "toolchains")
+use_repo(rules_java_toolchains, "remote_java_tools")
 
 android_sdk_dev = use_extension("//android/sdk:repos.bzl", "android_sdk", dev_dependency = True)
 android_sdk_dev.configure(accept_licenses = ["android-sdk-license"])
