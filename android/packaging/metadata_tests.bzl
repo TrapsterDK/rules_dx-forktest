@@ -22,7 +22,7 @@ load(
 
 def _packaging_checks():
     checks = []
-    checks.append(expect_equal("sdk repository", APP_SDK_REPOSITORY, "androidsdk"))
+    checks.append(expect_equal("sdk repository", APP_SDK_REPOSITORY, "dx_androidsdk"))
     checks.append(expect_equal("sdk platform", APP_SDK_PLATFORM, "android-34"))
     checks.append(expect_equal("sdk build tools", APP_SDK_BUILD_TOOLS, "35.0.0"))
     checks.append(expect_equal("sdk api level", APP_SDK_API_LEVEL, 31))
