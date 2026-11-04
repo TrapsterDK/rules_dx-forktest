@@ -407,11 +407,11 @@ fn the_gate_job_can_never_be_skipped() {
 }
 
 #[test]
-fn the_gate_runs_on_pull_requests_and_merge_groups() {
+fn the_gate_runs_on_dispatch_and_merge_groups() {
     let on = triggers(GATE_WORKFLOW);
     assert!(
-        on.get("pull_request").is_some(),
-        "{GATE_WORKFLOW} must subscribe to pull_request: {on}"
+        on.get("workflow_dispatch").is_some() && on.get("pull_request").is_none(),
+        "{GATE_WORKFLOW} must run on dispatch, not on every pull request: {on}"
     );
     assert_eq!(
         on["merge_group"]["types"],
