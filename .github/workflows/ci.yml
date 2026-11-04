@@ -1,13 +1,9 @@
 name: ci
 
 on:
-  push:
-    branches: [main]
-  pull_request:
   workflow_dispatch:
-  # Gives main a known pass or fail twice a day.
   schedule:
-    - cron: "17 3,15 * * *"
+    - cron: "17 3 * * *"
   merge_group:
     types: [checks_requested]
 
