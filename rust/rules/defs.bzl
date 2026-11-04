@@ -252,8 +252,28 @@ def rust_test(
     if wasm != "wasi" and (preopens != None or runtime != None):
         fail("rust_test: preopens and runtime need wasm = \"wasi\"")
     if wasm == "browser":
-        if crate == None or srcs != None:
-            fail("rust_test: wasm = \"browser\" needs crate set to a rust_binary(wasm = \"browser\")")
+        if (crate == None) == (srcs == None):
+            fail("rust_test: wasm = \"browser\" needs srcs or crate, not both")
+        if srcs != None:
+            crate_root = kwargs.pop("crate_root", None)
+            if crate_root == None and type(srcs) == "list" and len(srcs) == 1:
+                crate_root = srcs[0]
+            binary = {key: kwargs.pop(key) for key in ("deps", "proc_macro_deps", "crate_name", "compile_data", "rustc_env", "rustc_env_files", "aliases") if key in kwargs}
+            binary |= {key: kwargs[key] for key in ("crate_features", "rustc_flags") if key in kwargs}
+            if crate_root != None:
+                binary["crate_root"] = crate_root
+            rust_binary(
+                name = name + "_crate",
+                srcs = srcs,
+                edition = edition,
+                wasm = "browser",
+                testonly = True,
+                tags = ["manual"],
+                visibility = ["//visibility:private"],
+                target_compatible_with = kwargs.get("target_compatible_with"),
+                **binary
+            )
+            crate = ":" + name + "_crate"
         _rust_browser_test(name, crate, visibility = visibility, **kwargs)
         return
     if wasm == "wasi":

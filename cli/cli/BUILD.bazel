@@ -309,6 +309,7 @@ rust_test(
         "//android/tests/fixtures/consumer_android:src/lib.rs",
         "//modules:versions.bzl",
         "//rust/tests/fixtures/consumer_web:BUILD.bazel",
+        "//rust/tests/fixtures/consumer_web:src/browser_test.rs",
         "//rust/tests/fixtures/consumer_web:src/lib.rs",
         "//rust/tests/fixtures/consumer_web:src/main.rs",
         "//tools/testing/process_probe",
