@@ -11,6 +11,7 @@ Bazelisk (see `.bazelversion`), then follow the command and CI guides below.
 ## Guides
 
 - [Use a remote cache](remote-cache.md): share build outputs with your team and CI.
+- [Use your own C/C++ toolchain](own-cc-toolchain.md): register your own compiler and see which toolchain wins.
 - [Use JetBrains IDEs and other editors](editors.md): point editors at the files `dx` writes.
 
 ## Support
@@ -37,8 +38,10 @@ Per-language guides in the repository:
 - [F#](https://github.com/devhusdk/rules_dx/blob/main/fsharp/README.md)
 - [Go](https://github.com/devhusdk/rules_dx/blob/main/go/README.md)
 - [Haskell](https://github.com/devhusdk/rules_dx/blob/main/haskell/README.md)
+- [Java](https://github.com/devhusdk/rules_dx/blob/main/java/README.md)
 - [JavaScript](https://github.com/devhusdk/rules_dx/blob/main/javascript/README.md)
 - [Julia](https://github.com/devhusdk/rules_dx/blob/main/julia/README.md)
+- [Kotlin](https://github.com/devhusdk/rules_dx/blob/main/kotlin/README.md)
 - [Lua](https://github.com/devhusdk/rules_dx/blob/main/lua/README.md)
 - [MSIX](https://github.com/devhusdk/rules_dx/blob/main/msix/README.md)
 - [OCaml](https://github.com/devhusdk/rules_dx/blob/main/ocaml/README.md)
@@ -48,6 +51,7 @@ Per-language guides in the repository:
 - [Python](https://github.com/devhusdk/rules_dx/blob/main/python/README.md)
 - [Qt](https://github.com/devhusdk/rules_dx/blob/main/qt/README.md)
 - [Ruby](https://github.com/devhusdk/rules_dx/blob/main/ruby/README.md)
+- [Scala](https://github.com/devhusdk/rules_dx/blob/main/scala/README.md)
 - [Swift](https://github.com/devhusdk/rules_dx/blob/main/swift/README.md)
 - [TypeScript](https://github.com/devhusdk/rules_dx/blob/main/typescript/README.md)
 - [Zig](https://github.com/devhusdk/rules_dx/blob/main/zig/README.md)
