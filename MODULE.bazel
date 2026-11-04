@@ -487,6 +487,11 @@ register_toolchains("//cc/toolchains:gcc_linux_x86_64_to_arm64")
 
 register_toolchains("//cc/toolchains:gcc_linux_arm64")
 
+register_toolchains("//cc/toolchains:msvc_windows_x86_64")
+
+# The guard must stay last among the MSVC entries.
+register_toolchains("//cc/toolchains:msvc_unsupported")
+
 register_toolchains("@llvm//toolchain:all")
 
 gcc = use_extension("//cc/toolchains:repos.bzl", "gcc")

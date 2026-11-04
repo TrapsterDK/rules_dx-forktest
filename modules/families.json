@@ -188,6 +188,8 @@
       "toolchains": [
         "//cc/toolchains:gcc_linux_x86_64",
         "//cc/toolchains:gcc_linux_x86_64_to_arm64",
+        "//cc/toolchains:msvc_windows_x86_64",
+        "//cc/toolchains:msvc_unsupported",
         "@llvm//toolchain:all"
       ]
     },

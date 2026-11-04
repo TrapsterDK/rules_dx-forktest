@@ -24,6 +24,7 @@ string_flag(
     values = [
         "llvm",
         "gcc",
+        "msvc",
     ],
     visibility = ["//visibility:public"],
 )
@@ -31,6 +32,11 @@ string_flag(
 config_setting(
     name = "gcc_selected",
     flag_values = {":compiler": "gcc"},
+)
+
+config_setting(
+    name = "msvc_selected",
+    flag_values = {":compiler": "msvc"},
 )
 
 toolchain(
@@ -75,6 +81,28 @@ toolchain(
     ],
     target_settings = [":gcc_selected"],
     toolchain = "@dx_gcc_linux_aarch64//:_cc_toolchain",
+    toolchain_type = "@bazel_tools//tools/cpp:toolchain_type",
+)
+
+toolchain(
+    name = "msvc_windows_x86_64",
+    exec_compatible_with = [
+        "@platforms//os:windows",
+        "@platforms//cpu:x86_64",
+    ],
+    target_compatible_with = [
+        "@platforms//os:windows",
+        "@platforms//cpu:x86_64",
+    ],
+    target_settings = [":msvc_selected"],
+    toolchain = "@dx_msvc//:cc_toolchain_x64_x64",
+    toolchain_type = "@bazel_tools//tools/cpp:toolchain_type",
+)
+
+toolchain(
+    name = "msvc_unsupported",
+    target_settings = [":msvc_selected"],
+    toolchain = "//cc/toolchains/msvc:unsupported",
     toolchain_type = "@bazel_tools//tools/cpp:toolchain_type",
 )
 
@@ -217,9 +245,15 @@ test_suite(
         ":identity_contract",
         ":identity_gcc",
         "//cc/tests/fixtures/hello:toolchain_action_tests",
-        "//cc/tests/gcc_cross:all",
+        "//cc/tests/gcc_cross:cross_arm64_test",
+        "//cc/toolchains/msvc:msvc_arm64_arm64_toolchain",
         "//cc/toolchains/msvc:msvc_layout",
-        "//cc/toolchains/msvc:msvc_toolchain",
+        "//cc/toolchains/msvc:msvc_layout_arm64",
+        "//cc/toolchains/msvc:msvc_repos",
+        "//cc/toolchains/msvc:msvc_unavailable",
+        "//cc/toolchains/msvc:msvc_unsupported",
+        "//cc/toolchains/msvc:msvc_x64_arm64_toolchain",
+        "//cc/toolchains/msvc:msvc_x64_x64_toolchain",
     ],
 )
 
