@@ -9,13 +9,24 @@ import (
 
 	"github.com/devhusdk/rules_dx/gazelle/common"
 
+	"github.com/bazel-contrib/bazel-gazelle/v2/label"
 	"github.com/bazel-contrib/bazel-gazelle/v2/rule"
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/language"
+	"github.com/bazelbuild/bazel-gazelle/repo"
 	"github.com/bazelbuild/bazel-gazelle/resolve"
 )
 
 const languageName = "d"
+
+// BinaryKind is the rule kind generated for the main package of a DUB
+// executable.
+const BinaryKind = "d_binary"
+
+// hubDirective names the repository that holds the DUB packages.
+const hubDirective = "d_dub_hub"
+
+const defaultHub = "dub"
 
 const unresolvedHint = "add a d_library whose srcs declare that module, or an exact # gazelle:resolve d <module> <label>"
 
@@ -34,6 +45,70 @@ var dKinds = map[string]rule.KindInfo{
 	},
 }
 
+func init() { dKinds[BinaryKind] = dKinds[LibraryKind] }
+
+// dubConfig is the dub.json in effect for a directory.
+type dubConfig struct {
+	rel     string
+	project *common.DubProject
+	roots   []string
+	hub     string
+}
+
+func dubOf(c *config.Config) *dubConfig {
+	cfg, _ := c.Exts[dubExt].(*dubConfig)
+	return cfg
+}
+
+const dubExt = "d.dub"
+
+func configureDub(c *config.Config, rel string, f *rule.File, rep common.Reporter) {
+	cfg := dubOf(c)
+	if project := common.ReadDubProject(filepath.Join(c.RepoRoot, filepath.FromSlash(rel))); project != nil {
+		next := &dubConfig{rel: rel, project: project, hub: defaultHub}
+		for _, root := range project.Roots(filepath.Join(c.RepoRoot, filepath.FromSlash(rel))) {
+			next.roots = append(next.roots, path.Join(rel, root))
+		}
+		if cfg != nil {
+			next.hub = cfg.hub
+		}
+		cfg = next
+	}
+	if f != nil {
+		for _, d := range f.Directives {
+			if d.Key != hubDirective {
+				continue
+			}
+			if cfg == nil {
+				cfg = &dubConfig{hub: defaultHub}
+			} else {
+				copied := *cfg
+				cfg = &copied
+			}
+			cfg.hub = strings.TrimSpace(d.Value)
+			if cfg.hub == "" {
+				cfg.hub = defaultHub
+			}
+		}
+	}
+	if cfg != nil {
+		c.Exts[dubExt] = cfg
+	}
+}
+
+// importRootOf returns the dub root that holds the package rel, if any.
+func (d *dubConfig) importRootOf(rel string) (string, bool) {
+	if d == nil {
+		return "", false
+	}
+	for _, root := range d.roots {
+		if rel == root || strings.HasPrefix(rel, root+"/") {
+			return root, true
+		}
+	}
+	return "", false
+}
+
 type dLang struct {
 	*common.SingleLang
 }
@@ -45,6 +120,10 @@ func NewLanguage() language.Language {
 		LanguageName:   languageName,
 		LibraryKind:    LibraryKind,
 		Kinds:          dKinds,
+		ExtraKinds:     []string{BinaryKind},
+		External:       "dub",
+		Directives:     []string{hubDirective},
+		ConfigureExt:   configureDub,
 		DefsPackage:    "d/rules:defs.bzl",
 		ImportAttr:     "srcs",
 		IsImportSource: isSupported,
@@ -52,6 +131,22 @@ func NewLanguage() language.Language {
 		UnresolvedHint: unresolvedHint,
 		Generate:       generateRules,
 	})}
+}
+
+// Resolve maps the hub repo of DUB imports to the d_dub_hub directive.
+func (l *dLang) Resolve(c *config.Config, ix *resolve.RuleIndex, _ *repo.RemoteCache, r *rule.Rule, raw interface{}, from label.Label) {
+	spec := l.ResolveSpecFor(c, r, from)
+	if cfg := dubOf(c); cfg != nil && spec.External != nil {
+		inner := spec.External
+		spec.External = func(name string) ([]label.Label, string) {
+			labels, hint := inner(name)
+			for i := range labels {
+				labels[i].Repo = cfg.hub
+			}
+			return labels, hint
+		}
+	}
+	common.ResolveSingle(c, ix, r, raw, from, spec)
 }
 
 // Imports indexes each source under the module it defines, read from its
@@ -91,6 +186,9 @@ func DirTargetName(dir string) (string, error) { return common.DirTargetName(dir
 
 func generateRules(args language.GenerateArgs, kinds map[string]rule.KindInfo, rep common.Reporter) language.GenerateResult {
 	root := "."
+	dub := dubOf(args.Config)
+	dubRoot, underDub := dub.importRootOf(args.Rel)
+	binary, isBinary := dubRoot == args.Rel && underDub && dub.project.TargetType == "executable", false
 	return common.GenerateSingleDir(args, kinds, common.SingleDirSpec{
 		LanguageName: languageName,
 		LibraryKind:  LibraryKind,
@@ -105,7 +203,16 @@ func generateRules(args language.GenerateArgs, kinds map[string]rule.KindInfo, r
 		},
 		DirName:      DirTargetName,
 		ParsePackage: func([]byte) (string, error) { return "", nil },
-		DefinesMain:  DefinesMain,
+		DefinesMain: func(content []byte) bool {
+			if !DefinesMain(content) {
+				return false
+			}
+			if binary {
+				isBinary = true
+				return false
+			}
+			return true
+		},
 		MainRule:     "d_binary",
 		MainPhrase:   "sources with a main function",
 		ParseImports: ParseImports,
@@ -121,16 +228,35 @@ func generateRules(args language.GenerateArgs, kinds map[string]rule.KindInfo, r
 			}
 			var err error
 			root, err = PackageRoot(args.Rel, declared)
+			if err == nil && underDub {
+				err = checkDubRoot(args.Rel, dubRoot, root)
+			}
 			return sources, err
 		},
 		Extend: func(r *rule.Rule, files []string, contents map[string][]byte) error {
 			if root != "." {
 				r.SetAttr("imports", []string{root})
 			}
+			if isBinary {
+				r.SetKind(BinaryKind)
+			}
 			return trackStringImports(r, files, contents, args.File)
 		},
 		Wrap: common.WrapImportSet,
 	}, rep)
+}
+
+// checkDubRoot fails when the import root the modules need is not the dub
+// root that holds the package.
+func checkDubRoot(rel, dubRoot, root string) error {
+	want := "."
+	if up := strings.Count(strings.TrimPrefix(rel, dubRoot), "/"); up > 0 {
+		want = strings.TrimSuffix(strings.Repeat("../", up), "/")
+	}
+	if root != want {
+		return fmt.Errorf("modules here need import root %q but dub.json puts the import root at %s; fix the module declarations or importPaths in dub.json", root, dubRoot)
+	}
+	return nil
 }
 
 // trackStringImports lists the files import("...") reads in string_srcs.
@@ -214,6 +340,5 @@ func existingStringSrcs(build *rule.File, name string) []string {
 	}
 	return nil
 }
-
 
 func init() { common.RegisterLanguage(NewLanguage) }

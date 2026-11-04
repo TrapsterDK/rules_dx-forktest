@@ -168,3 +168,60 @@ func TestImportsIndexExactModules(t *testing.T) {
 		t.Errorf("indexed %v, want app, app.util, plain", got)
 	}
 }
+
+func dubGenerate(t *testing.T, dubJSON, rel string, files map[string]string) (language.Language, language.GenerateResult) {
+	t.Helper()
+	root := t.TempDir()
+	write := func(name, content string) {
+		file := filepath.Join(root, filepath.FromSlash(name))
+		if err := os.MkdirAll(filepath.Dir(file), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(file, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("dub.json", dubJSON)
+	var regular []string
+	for name, content := range files {
+		write(rel+"/"+name, content)
+		regular = append(regular, name)
+	}
+	c := config.New()
+	c.RepoRoot = root
+	lang := NewLanguage()
+	lang.Configure(c, "", nil)
+	return lang, lang.GenerateRules(language.GenerateArgs{
+		Config:       c,
+		Dir:          filepath.Join(root, filepath.FromSlash(rel)),
+		Rel:          rel,
+		RegularFiles: regular,
+	})
+}
+
+func TestDubExecutableMainPackageIsBinary(t *testing.T) {
+	lang, result := dubGenerate(t, `{"name": "app", "targetType": "executable"}`, "source", map[string]string{
+		"app.d": "module app;\nvoid main() {}\n",
+	})
+	if failed(lang) || len(result.Gen) != 1 || result.Gen[0].Kind() != BinaryKind {
+		t.Fatalf("gen = %v, errors: %s", result.Gen, errorsOf(lang))
+	}
+}
+
+func TestDubLibraryMainStaysHandwritten(t *testing.T) {
+	lang, _ := dubGenerate(t, `{"name": "app", "targetType": "library"}`, "source", map[string]string{
+		"app.d": "module app;\nvoid main() {}\n",
+	})
+	if !failed(lang) {
+		t.Fatal("main in a library package should fail")
+	}
+}
+
+func TestDubRootMismatchFails(t *testing.T) {
+	lang, _ := dubGenerate(t, `{"name": "app", "importPaths": ["lib"]}`, "lib/app", map[string]string{
+		"util.d": "module util;\n",
+	})
+	if !failed(lang) || !strings.Contains(errorsOf(lang), "dub.json puts the import root at lib") {
+		t.Fatalf("errors: %s", errorsOf(lang))
+	}
+}

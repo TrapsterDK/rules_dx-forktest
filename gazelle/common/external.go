@@ -32,7 +32,11 @@ type externalParser struct {
 	// RootOnly limits discovery to the repository root, for ecosystems whose
 	// targets are only defined there.
 	RootOnly bool
-	Parse       func(content []byte, path string) (externalManifest, error)
+	Parse    func(content []byte, path string) (externalManifest, error)
+	// Sibling names a file next to Discover that ParseWithSibling also reads.
+	// It is nil when the file is absent.
+	Sibling          string
+	ParseWithSibling func(content, sibling []byte, path string) (externalManifest, error)
 }
 
 // externalManifest is a parsed source of one ecosystem.
@@ -61,6 +65,12 @@ var externalParsers = map[string]externalParser{
 		Discover:    "pubspec.lock",
 		DefaultRepo: "pub_deps",
 		Parse:       parsePubLockManifest,
+	},
+	"dub": {
+		Discover:         "dub.json",
+		DefaultRepo:      "dub",
+		Sibling:          "dub.selections.json",
+		ParseWithSibling: parseDubManifest,
 	},
 	"npm": {
 		Discover: "package.json",
@@ -244,6 +254,7 @@ type externalCacheKey struct {
 	path string
 	size int64
 	mod  time.Time
+	sib  string
 }
 
 type externalCacheEntry struct {
@@ -268,6 +279,12 @@ func loadExternal(parser externalParser, abs, relPath string) (externalManifest,
 		return nil, fmt.Errorf("is a directory")
 	}
 	key := externalCacheKey{eco: parser.Discover, path: abs, size: info.Size(), mod: info.ModTime()}
+	var sibling []byte
+	if parser.Sibling != "" {
+		if sibling, err = os.ReadFile(filepath.Join(filepath.Dir(abs), parser.Sibling)); err == nil {
+			key.sib = string(sibling)
+		}
+	}
 	externalCacheMu.Lock()
 	entry, ok := externalCache[key]
 	externalCacheMu.Unlock()
@@ -276,7 +293,11 @@ func loadExternal(parser externalParser, abs, relPath string) (externalManifest,
 	}
 	content, err := os.ReadFile(abs)
 	if err == nil {
-		entry.manifest, entry.err = parser.Parse(StripBOM(content), relPath)
+		if parser.ParseWithSibling != nil {
+			entry.manifest, entry.err = parser.ParseWithSibling(StripBOM(content), sibling, relPath)
+		} else {
+			entry.manifest, entry.err = parser.Parse(StripBOM(content), relPath)
+		}
 	} else {
 		entry.err = err
 	}

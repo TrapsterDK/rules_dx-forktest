@@ -43,6 +43,20 @@ d_test(
   cells constrain on the `@llvm//constraints/windows/abi:msvc` ABI, because LDC's prebuilt runtime
   is MSVC-ABI.
 
+## Generate
+
+`dx generate` writes one `d_library` per directory of D modules. See
+`gazelle/d/testdata/modules/README.md` for the module rules.
+
+Next to a `dub.json`, generation reads the import roots (`importPaths`, else `sourcePaths`, else
+`source` or `src`) and fails when a package's modules need a different root. With
+`"targetType": "executable"`, the package of the root that defines `main` becomes a `d_binary`.
+
+An import resolves to `@dub//<package>` when its first segment is the name of a dependency in
+`dub.json` (with `-` read as `_`) and `dub.selections.json` pins it. Set
+`# gazelle:d_dub_hub <name>` in a BUILD file to name the hub repo other than `dub`, for example
+`dub_packages`. `# gazelle:resolve d <module> <label>` overrides one import.
+
 ## Formatting
 
 Select `dfmt` in a `d` quality family to check and fix D formatting. The D
