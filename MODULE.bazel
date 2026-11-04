@@ -19,14 +19,14 @@ single_version_override(
     version = "0.75.0",
 )
 
-# floor: equals tested; not yet searched (#3747)
+# floor: equals tested
 bazel_dep(name = "rules_rust_wasm_bindgen", version = "0.75.0")
 single_version_override(
     module_name = "rules_rust_wasm_bindgen",
     version = "0.75.0",
 )
 
-# floor: equals tested; not yet searched (#3747)
+# floor: equals tested
 bazel_dep(name = "rules_cc", version = "0.2.27")
 single_version_override(
     module_name = "rules_cc",
@@ -65,7 +65,7 @@ single_version_override(
     version = "0.13.0",
 )
 
-# floor: equals tested; not yet searched (#3747)
+# floor: equals tested
 bazel_dep(name = "llvm", version = "0.8.25")
 single_version_override(
     module_name = "llvm",
@@ -120,7 +120,7 @@ single_version_override(
     version = "0.54.0",
 )
 
-# floor: equals tested; not yet searched (#3747)
+# floor: equals tested
 bazel_dep(name = "rules_shell", version = "0.8.0")
 single_version_override(
     module_name = "rules_shell",
@@ -197,21 +197,21 @@ go_sdk.download(
     version = "1.26.10",
 )
 
-# floor: equals tested; not yet searched (#3747)
+# floor: equals tested
 bazel_dep(name = "platforms", version = "1.1.0")
 single_version_override(
     module_name = "platforms",
     version = "1.1.0",
 )
 
-# floor: equals tested; not yet searched (#3747)
+# floor: equals tested
 bazel_dep(name = "bazel_skylib", version = "1.9.2")
 single_version_override(
     module_name = "bazel_skylib",
     version = "1.9.2",
 )
 
-# floor: equals tested; not yet searched (#3747)
+# floor: equals tested
 bazel_dep(name = "rules_proto", version = "7.1.0")
 single_version_override(
     module_name = "rules_proto",
@@ -227,7 +227,7 @@ single_version_override(
     version = "36.2",
 )
 
-# floor: equals tested; not yet searched (#3747)
+# floor: equals tested
 bazel_dep(name = "rules_rust_prost", version = "0.75.0")
 single_version_override(
     module_name = "rules_rust_prost",
