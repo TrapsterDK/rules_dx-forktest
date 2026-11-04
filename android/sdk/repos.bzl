@@ -7,6 +7,13 @@ ANDROID_NDK_REVISION = "27.0.12077973"
 
 ANDROID_NDK_RELEASE = "r27"
 
+# Directory name under lib/clang in the pinned NDK.
+ANDROID_NDK_CLANG_VERSION = "18"
+
+NDK_PREBUILT = "toolchains/llvm/prebuilt/linux-x86_64"
+
+NDK_TRIPLES = ["aarch64-linux-android", "x86_64-linux-android"]
+
 ANDROID_API_LEVEL = 31
 
 ANDROID_TARGET = "aarch64-linux-android"
@@ -398,6 +405,44 @@ def hub_build(ndk_repos, build_tools_repos, bundletool_repo, *, platform_repo = 
     _hub_target(lines, "emulator", emulator_repos, "emulator", package_no_match_error("emulator"))
     return "\n".join(lines) + "\n"
 
+def ndk_toolchain_build(root):
+    """Returns the filegroups a cc toolchain needs from the NDK unpacked under root."""
+    prebuilt = root + "/" + NDK_PREBUILT
+    lines = []
+    for name, tool in [("clang", "clang"), ("ld_lld", "ld.lld"), ("llvm_ar", "llvm-ar"), ("llvm_readelf", "llvm-readelf")]:
+        lines.extend([
+            "filegroup(",
+            '    name = "%s",' % name,
+            '    srcs = ["%s/bin/%s"],' % (prebuilt, tool),
+            '    visibility = ["//visibility:public"],',
+            ")",
+            "",
+        ])
+    lines.extend([
+        "filegroup(",
+        '    name = "compiler_files",',
+        "    srcs = glob([",
+        '        "%s/lib/clang/%s/include/**",' % (prebuilt, ANDROID_NDK_CLANG_VERSION),
+        '        "%s/sysroot/usr/include/**",' % prebuilt,
+        "    ]),",
+        '    visibility = ["//visibility:public"],',
+        ")",
+        "",
+    ])
+    for triple in NDK_TRIPLES:
+        lines.extend([
+            "filegroup(",
+            '    name = "linker_files_%s",' % triple,
+            "    srcs = glob([",
+            '        "%s/lib/clang/%s/lib/linux/**",' % (prebuilt, ANDROID_NDK_CLANG_VERSION),
+            '        "%s/sysroot/usr/lib/%s/**",' % (prebuilt, triple),
+            "    ]),",
+            '    visibility = ["//visibility:public"],',
+            ")",
+            "",
+        ])
+    return "\n".join(lines)
+
 def ndk_build(anchor):
     """Returns the BUILD file exposing one acquired NDK anchor."""
     return "\n".join([
@@ -413,6 +458,7 @@ def ndk_build(anchor):
         '    visibility = ["//visibility:public"],',
         ")",
         "",
+        ndk_toolchain_build("extracted"),
     ])
 
 def build_tools_build(anchor):

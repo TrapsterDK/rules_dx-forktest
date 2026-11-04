@@ -141,7 +141,6 @@ jobs:
         if: ${{ inputs.android && matrix.platform == 'linux_x86_64' }}
         run: |
           {
-            echo "build --extra_toolchains=@android_ndk_toolchain//:ndk_cc_toolchain_device,@android_ndk_toolchain//:ndk_cc_toolchain_emulator"
             echo "test --test_env=ANDROID_HOME"
           } > user.bazelrc
       - name: Boot the emulator
