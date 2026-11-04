@@ -819,6 +819,7 @@ rust_test(
         "//:RELEASING.md",
         "//.github:workflows/ci.yml",
         "//.github:workflows/release.yml",
+        "//.github:workflows/release-cells.yml",
         "//cli/adopt:src/launcher.rs",
         "//cli/adopt:src/version.rs",
         "//cli/prebuilt:pins.bzl",
