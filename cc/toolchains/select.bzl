@@ -6,6 +6,8 @@ _COMPILER = str(Label("//cc/toolchains:compiler"))
 
 _FEATURES = "//command_line_option:features"
 
+_MODE = "//command_line_option:compilation_mode"
+
 def _impl(settings, attr):
     features = list(settings[_FEATURES])
     for f in getattr(attr, "extra_features", []):
@@ -14,12 +16,13 @@ def _impl(settings, attr):
     return {
         _COMPILER: attr.compiler or settings[_COMPILER],
         _FEATURES: features,
+        _MODE: getattr(attr, "compilation_mode", "") or settings[_MODE],
     }
 
 toolchain_transition = transition(
     implementation = _impl,
-    inputs = [_COMPILER, _FEATURES],
-    outputs = [_COMPILER, _FEATURES],
+    inputs = [_COMPILER, _FEATURES, _MODE],
+    outputs = [_COMPILER, _FEATURES, _MODE],
 )
 
 def _test_impl(ctx):
@@ -27,12 +30,13 @@ def _test_impl(ctx):
     inner = src[DefaultInfo].files_to_run.executable
     path = inner.short_path
     path = path[3:] if path.startswith("../") else ctx.workspace_name + "/" + path
-    exe = ctx.actions.declare_file(ctx.label.name + ".sh")
-    ctx.actions.write(
-        output = exe,
-        content = "#!/bin/bash\nexec \"${RUNFILES_DIR:-$0.runfiles}/%s\" \"$@\"\n" % path,
-        is_executable = True,
-    )
+    if ctx.target_platform_has_constraint(ctx.attr._windows_os[platform_common.ConstraintValueInfo]):
+        exe = ctx.actions.declare_file(ctx.label.name + ".bat")
+        content = "@echo off\r\n\"%TEST_SRCDIR%\\" + path.replace("/", "\\") + "\" %*\r\n"
+    else:
+        exe = ctx.actions.declare_file(ctx.label.name + ".sh")
+        content = "#!/bin/bash\nexec \"${RUNFILES_DIR:-$0.runfiles}/%s\" \"$@\"\n" % path
+    ctx.actions.write(output = exe, content = content, is_executable = True)
     runfiles = ctx.runfiles(files = [inner]).merge(src[DefaultInfo].default_runfiles)
     providers = [DefaultInfo(executable = exe, runfiles = runfiles)]
     if RunEnvironmentInfo in src:
@@ -45,8 +49,10 @@ cc_toolchain_test = rule(
     doc = "Runs a test built with the selected C++ toolchain.",
     attrs = {
         "compiler": attr.string(doc = "Compiler flag value to build with.", mandatory = True),
+        "compilation_mode": attr.string(doc = "Compilation mode to build with, or empty to keep the command line value.", values = ["", "dbg", "fastbuild", "opt"]),
         "extra_features": attr.string_list(doc = "Features to enable on top of the command line features, such as asan.", default = []),
         "test": attr.label(doc = "Test to rebuild.", executable = True, cfg = toolchain_transition, mandatory = True),
+        "_windows_os": attr.label(default = "@platforms//os:windows"),
     } | dx_lcov_merger_attr(),
     test = True,
 )
