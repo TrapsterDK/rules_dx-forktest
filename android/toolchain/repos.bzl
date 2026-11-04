@@ -1,15 +1,14 @@
 """Local NDK-backed C++ toolchain repositories for Android native builds."""
 
 load("//android/platforms:defs.bzl", "api_floor", "constraint_list", "cxx_runtime_errors", "ndk_revision_errors", "rust_triples")
+load("//android/sdk:repos.bzl", "ANDROID_NDK_CLANG_VERSION", "ANDROID_NDK_REVISION", "NDK_PREBUILT", "ndk_repository_name", "ndk_toolchain_build")
 
 _SDK_ANCHOR = "source.properties"
-
-_HOST_PREBUILT = "toolchains/llvm/prebuilt/linux-x86_64"
 
 _QUALIFIED_HOST = "linux_x86_64"
 
 def _prebuilt_for(ndk_root):
-    return ndk_root + "/" + _HOST_PREBUILT
+    return ndk_root + "/" + NDK_PREBUILT
 
 def _sysroot_for(ndk_root):
     return _prebuilt_for(ndk_root) + "/sysroot"
@@ -45,23 +44,12 @@ def toolchain_repo_errors(local_path, revision, api_level, cxx_runtime):
 _TUPLE_BUILD = """
 filegroup(
     name = "compiler_files_{tuple}",
-    srcs = [
-        "sdk/ndk/{revision}/" + "{prebuilt}/bin/clang",
-    ] + glob([
-        "sdk/ndk/{revision}/" + "{prebuilt}/lib/clang/{clang_version}/include/**",
-        "sdk/ndk/{revision}/" + "{prebuilt}/{sysroot}/usr/include/**",
-    ]),
+    srcs = ["{ndk}:clang", "{ndk}:compiler_files"],
 )
 
 filegroup(
     name = "linker_files_{tuple}",
-    srcs = [
-        "sdk/ndk/{revision}/" + "{prebuilt}/bin/clang",
-        "sdk/ndk/{revision}/" + "{prebuilt}/bin/ld.lld",
-    ] + glob([
-        "sdk/ndk/{revision}/" + "{prebuilt}/lib/clang/{clang_version}/lib/linux/**",
-        "sdk/ndk/{revision}/" + "{prebuilt}/{sysroot}/usr/lib/{triple}/**",
-    ]),
+    srcs = ["{ndk}:clang", "{ndk}:ld_lld", "{ndk}:linker_files_{triple}"],
 )
 
 filegroup(
@@ -81,7 +69,7 @@ ndk_cc_toolchain_config(
     cpu = "{cpu}",
     cxx_include_dir = "{cxx_include_dir}",
     cxx_runtime = "{cxx_runtime}",
-    ndk_prebuilt = "sdk/ndk/{revision}/{prebuilt}",
+    ndk_prebuilt = "{prebuilt}",
     ndk_sysroot = "{ndk_sysroot}",
     rust_triple = "{triple}",
     tuple = "{tuple}",
@@ -115,12 +103,12 @@ filegroup(name = "empty", srcs = [])
 
 filegroup(
     name = "ar_files",
-    srcs = ["sdk/ndk/{revision}/" + "{prebuilt}/bin/llvm-ar"],
+    srcs = ["{ndk}:llvm_ar"],
 )
 
 filegroup(
     name = "llvm_readelf",
-    srcs = ["sdk/ndk/{revision}/" + "{prebuilt}/bin/llvm-readelf"],
+    srcs = ["{ndk}:llvm_readelf"],
 )
 """
 
@@ -136,74 +124,85 @@ _TUPLE_CONSTRAINTS = {
     for name in ["device", "emulator"]
 }
 
-def _clang_version(ctx, prebuilt):
-    dirs = ctx.path(prebuilt + "/lib/clang").readdir()
-    if len(dirs) != 1:
-        fail("android_ndk_toolchain: expected one directory under '" + prebuilt + "/lib/clang', found " + str(len(dirs)))
-    return dirs[0].basename
+def toolchain_build(ndk_label, exec_root, api_level, cxx_runtime, local_root = ""):
+    """Returns the BUILD text declaring both NDK cc toolchains.
 
-def _android_ndk_toolchain_repo_impl(ctx):
-    local_path = ctx.attr.local_path
-    if local_path == "":
-        local_path = ctx.os.environ.get("ANDROID_HOME", "")
-    revision = ctx.attr.ndk_revision
-    if revision == "":
-        revision = ctx.os.environ.get("ANDROID_NDK_REVISION", "")
-    if local_path == "":
-        ctx.file("BUILD.bazel", "package(default_visibility = [\"//visibility:public\"])\n")
-        return
-    failures = toolchain_repo_errors(local_path, revision, ctx.attr.api_level, ctx.attr.cxx_runtime)
-    if len(failures) > 0:
-        fail("; ".join(failures))
-    if ctx.os.name != "linux" or ctx.os.arch != "amd64":
-        fail("android_ndk_toolchain: qualified host is " + _QUALIFIED_HOST + ", this host is " +
-             ctx.os.name + "_" + ctx.os.arch)
-    for path in required_files(local_path, revision):
-        if not ctx.path(path).exists:
-            fail("android_ndk_toolchain: '" + path + "' is absent from the declared SDK")
-    sdk = ctx.path(local_path)
-    ctx.symlink(sdk, "sdk")
-    prebuilt = _HOST_PREBUILT
-    sysroot = "sysroot"
-    clang_version = _clang_version(ctx, str(sdk) + "/ndk/" + revision + "/" + prebuilt)
+    Args:
+      ndk_label: Label prefix of the NDK repository holding the tool filegroups, such as "@repo//".
+      exec_root: Execroot-relative directory the NDK is unpacked into.
+      api_level: Default Android API level.
+      cxx_runtime: C++ runtime linkage.
+      local_root: Package-relative NDK directory when the NDK is symlinked into this repository, else empty.
 
-    # Execroot-relative so remote execution never sees a host-absolute path.
-    root = "external/" + ctx.name + "/sdk/ndk/" + revision + "/" + prebuilt
-    resource_dir = root + "/lib/clang/" + clang_version + "/include"
-    cxx_include_dir = root + "/" + sysroot + "/usr/include/c++/v1"
-    ndk_sysroot = root + "/" + sysroot
-    api_level = ctx.attr.api_level if ctx.attr.api_level != 0 else api_floor()
+    Returns:
+      The BUILD file text.
+    """
+    prebuilt = exec_root + "/" + NDK_PREBUILT
+    sysroot = prebuilt + "/sysroot"
     chunks = [
         'load("' + str(Label("@rules_cc//cc:defs.bzl")) + '", "cc_toolchain")',
         'load("' + str(Label("//android/toolchain:cc_toolchain_config.bzl")) + '", "ndk_cc_toolchain_config")',
         "",
         'package(default_visibility = ["//visibility:public"])',
         "",
-        _COMMON_BUILD.format(revision = revision, prebuilt = prebuilt),
+        _COMMON_BUILD.format(ndk = ndk_label),
     ]
+    if local_root != "":
+        chunks.append(ndk_toolchain_build(local_root))
     for name in ["device", "emulator"]:
         triple = _TUPLE_TRIPLE[name]
         chunks.append(_TUPLE_BUILD.format(
+            ndk = ndk_label,
             tuple = name,
-            revision = revision,
             prebuilt = prebuilt,
-            sysroot = sysroot,
-            clang_version = clang_version,
             api_level = api_level,
             clang_target = triple + str(api_level),
             cpu = _TUPLE_CPU[name],
             triple = triple,
-            cxx_runtime = ctx.attr.cxx_runtime,
-            resource_dir = resource_dir,
-            cxx_include_dir = cxx_include_dir,
-            ndk_sysroot = ndk_sysroot,
+            cxx_runtime = cxx_runtime,
+            resource_dir = prebuilt + "/lib/clang/" + ANDROID_NDK_CLANG_VERSION + "/include",
+            cxx_include_dir = sysroot + "/usr/include/c++/v1",
+            ndk_sysroot = sysroot,
             compatible_with = _TUPLE_CONSTRAINTS[name],
         ))
-    ctx.file("BUILD.bazel", "\n".join(chunks))
+    return "\n".join(chunks)
+
+def _android_ndk_toolchain_repo_impl(ctx):
+    api_level = ctx.attr.api_level if ctx.attr.api_level != 0 else api_floor()
+    if ctx.attr.local_path == "":
+        failures = toolchain_repo_errors("pinned", ANDROID_NDK_REVISION, api_level, ctx.attr.cxx_runtime)
+        if len(failures) > 0:
+            fail("; ".join(failures))
+        ndk = Label("@" + ndk_repository_name(_QUALIFIED_HOST) + "//:ndk_anchor")
+        ctx.file("BUILD.bazel", toolchain_build(
+            str(ndk).removesuffix(":ndk_anchor"),
+            ndk.workspace_root + "/extracted",
+            api_level,
+            ctx.attr.cxx_runtime,
+        ))
+        return
+    revision = ctx.attr.ndk_revision or ANDROID_NDK_REVISION
+    failures = toolchain_repo_errors(ctx.attr.local_path, revision, ctx.attr.api_level, ctx.attr.cxx_runtime)
+    if len(failures) > 0:
+        fail("; ".join(failures))
+    if ctx.os.name != "linux" or ctx.os.arch != "amd64":
+        fail("android_ndk_toolchain: qualified host is " + _QUALIFIED_HOST + ", this host is " +
+             ctx.os.name + "_" + ctx.os.arch)
+    for path in required_files(ctx.attr.local_path, revision):
+        if not ctx.path(path).exists:
+            fail("android_ndk_toolchain: '" + path + "' is absent from the declared SDK")
+    ctx.symlink(ctx.path(ctx.attr.local_path), "sdk")
+    local_root = "sdk/ndk/" + revision
+    ctx.file("BUILD.bazel", toolchain_build(
+        "",
+        "external/" + ctx.name + "/" + local_root,
+        api_level,
+        ctx.attr.cxx_runtime,
+        local_root,
+    ))
 
 android_ndk_toolchain_repo = repository_rule(
     implementation = _android_ndk_toolchain_repo_impl,
-    environ = ["ANDROID_NDK_REVISION", "ANDROID_HOME"],
     attrs = {
         "api_level": attr.int(
             doc = "Android API level used when a target does not set one, or zero for the floor.",
@@ -214,11 +213,11 @@ android_ndk_toolchain_repo = repository_rule(
             default = "shared",
         ),
         "local_path": attr.string(
-            doc = "Installed Android SDK root, falling back to the ANDROID_HOME environment variable.",
+            doc = "Installed Android SDK root to use instead of the pinned NDK repository.",
             default = "",
         ),
         "ndk_revision": attr.string(
-            doc = "Android NDK revision the toolchain repository expects.",
+            doc = "NDK revision under local_path, defaulting to the pinned one.",
             default = "",
         ),
     },
