@@ -25,6 +25,7 @@ var pythonKinds = map[string]rule.KindInfo{
 	libraryKind: kindInfo(),
 	testKind:    kindInfo(),
 	binaryKind:  binaryKindInfo(),
+	ruffKind:    ruffKindInfo(),
 }
 
 func kindInfo() rule.KindInfo {
@@ -33,10 +34,19 @@ func kindInfo() rule.KindInfo {
 		NonEmptyAttrs: map[string]bool{"srcs": true},
 		MergeableAttrs: map[string]bool{
 			"srcs":    true,
-			"imports": true,
-			"deps":    true,
+			"imports":      true,
+			"deps":         true,
+			"aspect_hints": true,
 		},
 		ResolveAttrs: map[string]bool{"deps": true},
+	}
+}
+
+func ruffKindInfo() rule.KindInfo {
+	return rule.KindInfo{
+		MatchAttrs:     []string{"src"},
+		NonEmptyAttrs:  map[string]bool{"src": true},
+		MergeableAttrs: map[string]bool{"src": true},
 	}
 }
 
@@ -44,8 +54,9 @@ func binaryKindInfo() rule.KindInfo {
 	return rule.KindInfo{
 		MatchAttrs: []string{"main"},
 		MergeableAttrs: map[string]bool{
-			"imports": true,
-			"deps":    true,
+			"imports":      true,
+			"deps":         true,
+			"aspect_hints": true,
 		},
 		ResolveAttrs: map[string]bool{"deps": true},
 	}
@@ -57,7 +68,9 @@ func newLang() *common.SingleLang {
 	return common.NewSingleLang(common.SingleLangSpec{
 		LanguageName:   languageName,
 		LibraryKind:    libraryKind,
-		ExtraKinds:     []string{testKind, binaryKind},
+		ExtraKinds:     []string{testKind, binaryKind, ruffKind},
+		KindDefs:       map[string]string{ruffKind: nativeDefs},
+		ConfigureExt:   configureRuff,
 		Kinds:          pythonKinds,
 		DefsPackage:    "python/rules:defs.bzl",
 		ImportAttr:     "srcs",
@@ -82,8 +95,14 @@ func generateRules(args language.GenerateArgs, _ map[string]rule.KindInfo, rep c
 		}
 	}
 	sort.Strings(sources)
+	ruff := ruffAt(args.Config)
+	var result language.GenerateResult
+	if ruff != nil && ruff.rel == args.Rel {
+		result.Gen = append(result.Gen, ruffRule(ruff, args.Rel))
+		result.Imports = append(result.Imports, common.WrapImportSet(nil))
+	}
 	if len(sources) == 0 {
-		return mergeStale(args.File, language.GenerateResult{})
+		return mergeStale(args.File, result)
 	}
 
 	type plan struct {
@@ -144,7 +163,6 @@ func generateRules(args language.GenerateArgs, _ map[string]rule.KindInfo, rep c
 
 	conftestDeps := conftestLabels(args.Config.RepoRoot, args.Rel, sources)
 	plain := common.CustomRunnerTests(args.File, args.OtherGen, testKind, "pytest")
-	var result language.GenerateResult
 	for _, p := range plans {
 		kind := libraryKind
 		if p.test {
@@ -177,8 +195,14 @@ func generateRules(args language.GenerateArgs, _ map[string]rule.KindInfo, rep c
 			result.Imports = append(result.Imports, common.WrapImportSet(nil))
 		}
 	}
-	if isFixturePath(args.Rel) {
-		for _, r := range result.Gen {
+	for _, r := range result.Gen {
+		if r.Kind() == ruffKind {
+			continue
+		}
+		if hints := withRuffHint(existingRule(args.File, r.Kind(), r.Name()), ruff, args.Rel); len(hints) > 0 {
+			r.SetAttr("aspect_hints", hints)
+		}
+		if isFixturePath(args.Rel) {
 			r.SetAttr("testonly", true)
 		}
 	}
