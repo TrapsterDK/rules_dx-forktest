@@ -74,8 +74,13 @@ and emits the JavaScript bindings: `<name>.js`, `<name>_bg.wasm`, and the
 declarations. Guard browser-only code with
 `#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]`.
 
-`rust_test(crate = ":tool_web", wasm = "browser")` runs the
-`#[wasm_bindgen_test]` cases of that binary in a browser that Bazel fetches.
+`rust_test(srcs = ["browser_test.rs"], wasm = "browser")` builds a test crate
+and runs its `#[wasm_bindgen_test]` cases in a browser that Bazel fetches. The
+file needs a `fn main`. One file becomes `crate_root`. `deps`,
+`proc_macro_deps` and `crate_root` go to the test crate.
+
+`rust_test(crate = ":tool_web", wasm = "browser")` runs the cases of an
+existing `rust_binary(wasm = "browser")` instead.
 It runs on linux x86_64 with Firefox, where the host needs GTK 3, and only
 runs locally. Other platforms skip it as incompatible. Wasm builds and
 browser tests run without coverage instrumentation, so `bazel coverage` runs
