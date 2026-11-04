@@ -59,6 +59,7 @@ rust_test(
         "families.json",
         "//:MODULE.bazel",
         "//quality:real_aspects.bzl",
+        "//quality:real_core.bzl",
     ],
     tags = [
         "external",

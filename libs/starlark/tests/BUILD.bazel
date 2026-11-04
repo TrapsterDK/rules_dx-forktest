@@ -230,7 +230,7 @@ starlark_test(
         "//javascript/rules:web.bzl": "resource_set = dx_bundler_resources",
         "//quality:fsc.bzl": "resource_set = dx_quality_heavy_resources",
         "//quality:roslyn.bzl": "resource_set = dx_quality_heavy_resources",
-        "//quality:real_aspects.bzl": "resource_set = real_quality_resource_set(",
+        "//quality:real_core.bzl": "resource_set = real_quality_resource_set(",
     },
     mode = "execution",
 )
