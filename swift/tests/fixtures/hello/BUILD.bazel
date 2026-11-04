@@ -11,6 +11,12 @@ package(
 
 _LINUX = ["@platforms//os:linux"]
 
+_NATIVE = select({
+    "@platforms//os:linux": [],
+    "@platforms//os:macos": [],
+    "//conditions:default": ["@platforms//:incompatible"],
+})
+
 swift_library(
     name = "greet",
     srcs = ["greet.swift"],
@@ -20,21 +26,21 @@ swift_library(
 swift_binary(
     name = "hello",
     srcs = ["main.swift"],
-    target_compatible_with = _LINUX,
+    target_compatible_with = _NATIVE,
     deps = [":greet"],
 )
 
 swift_test(
     name = "xctest",
     srcs = ["greet_xctest.swift"],
-    target_compatible_with = _LINUX,
+    target_compatible_with = _NATIVE,
     deps = [":greet"],
 )
 
 swift_test(
     name = "testing",
     srcs = ["greet_testing.swift"],
-    target_compatible_with = _LINUX,
+    target_compatible_with = _NATIVE,
     deps = [":greet"],
 )
 
@@ -45,7 +51,7 @@ swift_library_provider_test(
 
 swift_binary_provider_test(
     name = "hello_providers_test",
-    target_compatible_with = _LINUX,
+    target_compatible_with = _NATIVE,
     target_under_test = ":hello",
 )
 
@@ -63,11 +69,19 @@ sh_test(
     target_compatible_with = _LINUX,
 )
 
+sh_test(
+    name = "hello_macho_test",
+    srcs = ["macho_test.sh"],
+    args = ["$(location :hello)"],
+    data = [":hello"],
+    target_compatible_with = ["@platforms//os:macos"],
+)
+
 dx_hello_output_test(
     name = "hello_output_test",
     binary = ":hello",
     expected = "Hello, swift!",
-    target_compatible_with = _LINUX,
+    target_compatible_with = _NATIVE,
 )
 
 real_source_target(

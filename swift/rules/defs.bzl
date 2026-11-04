@@ -1,4 +1,4 @@
-"""Swift wrappers that build for the Swift Linux platform."""
+"""Swift wrappers that build for Linux and macOS."""
 
 load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 load("@rules_swift//swift:providers.bzl", "SwiftInfo")
@@ -63,13 +63,13 @@ def _forward():
     return {"swift_platform": swift_linux_platform()}
 
 def swift_library(name, srcs = None, visibility = None, **kwargs):
-    """Wraps swift_library and builds it for the Swift Linux platform."""
+    """Wraps swift_library and builds it for Linux, or with Xcode on macOS."""
     dx_wrap(name, _swift_library, _swift_library_forward, srcs, visibility = visibility, upstream_kwargs = dx_append_flags(kwargs, "features", _STATIC), quality_srcs = srcs or [], extra_forward_kwargs = _forward(), **kwargs)
 
 def swift_binary(name, srcs = None, visibility = None, **kwargs):
-    """Wraps swift_binary and builds it for the Swift Linux platform."""
+    """Wraps swift_binary and builds it for Linux, or with Xcode on macOS."""
     dx_wrap_binary(name, _swift_binary, _swift_binary_forward, srcs, visibility = visibility, upstream_kwargs = dx_append_flags(kwargs, "features", _STATIC), quality_srcs = srcs or [], extra_forward_kwargs = _forward(), **kwargs)
 
 def swift_test(name, srcs = None, visibility = None, **kwargs):
-    """Wraps swift_test and builds it for the Swift Linux platform."""
+    """Wraps swift_test and builds it for Linux, or with Xcode on macOS."""
     dx_wrap_test(name, _swift_test, _swift_forward_test, srcs, visibility = visibility, upstream_kwargs = dx_append_flags(kwargs, "features", _STATIC), quality_srcs = srcs or [], extra_forward_kwargs = _forward(), **kwargs)
