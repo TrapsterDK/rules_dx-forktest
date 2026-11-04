@@ -328,11 +328,6 @@ fn plan_init_files_full(module_name: &str, branch: &str) -> Result<Vec<ScaffoldF
             kind: FileKind::WriteOnce,
         },
         ScaffoldFile {
-            path: ".gitignore".to_owned(),
-            content: format!("{}\n", crate::build_output::IGNORE_LINES.join("\n")),
-            kind: FileKind::WriteOnce,
-        },
-        ScaffoldFile {
             path: ".bazelignore".to_owned(),
             content: BAZELIGNORE_CONTENT.to_owned(),
             kind: FileKind::WriteOnce,
@@ -592,7 +587,6 @@ mod tests {
         let mut want = [
             ".dx/version",
             ".devcontainer/devcontainer.json",
-            ".gitignore",
             ".bazelignore",
             ".envrc",
             ".vscode/settings.json",
