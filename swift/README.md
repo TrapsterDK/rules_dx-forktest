@@ -40,7 +40,20 @@ dx format --apply
 dx lint
 ```
 
+## macOS arm64
+
+On macOS the same rules build with the Xcode installed on the host. Install
+Xcode first; no Swift toolchain is downloaded. Binaries link the system Swift
+runtime dynamically.
+
+```sh
+dx build //app:hello
+dx test //app:tests
+```
+
 ## Toolchain
+
+The sections below describe the Linux toolchain.
 
 - The compiler is the Swift 6.4.1 Ubuntu 22.04 archive from swift.org.
 - Headers and C libraries come from a locked Ubuntu 22.04 package set.
