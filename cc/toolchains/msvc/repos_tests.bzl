@@ -4,7 +4,7 @@ load("@bazel_skylib//lib:unittest.bzl", "analysistest", "asserts")
 load("//libs/starlark:defs.bzl", "expect_contains", "expect_equal", "expect_true", "starlark_test")
 load(":layout.bzl", "SUPPORTED_CELLS", "msvc_layout")
 load(":repos.bzl", "HUB_NAME", "LICENSE", "UNACCEPTED", "hub_build", "layout_links", "missing_error")
-load(":unavailable.bzl", "msvc_unavailable")
+load(":unavailable.bzl", "UNSUPPORTED", "msvc_unavailable")
 
 def _checks():
     links = layout_links("14.44.35207", "10.0.26100.0")
@@ -75,6 +75,25 @@ def msvc_unavailable_tests(name):
         tags = ["manual"],
     )
     _unaccepted_test(
+        name = name,
+        target_under_test = ":" + name + "_target",
+    )
+
+def _unsupported_impl(ctx):
+    env = analysistest.begin(ctx)
+    asserts.expect_failure(env, UNSUPPORTED)
+    return analysistest.end(env)
+
+_unsupported_test = analysistest.make(_unsupported_impl, expect_failure = True)
+
+def msvc_unsupported_tests(name):
+    """Declares the test that the unsupported-platform guard fails when used."""
+    msvc_unavailable(
+        name = name + "_target",
+        error = UNSUPPORTED,
+        tags = ["manual"],
+    )
+    _unsupported_test(
         name = name,
         target_under_test = ":" + name + "_target",
     )

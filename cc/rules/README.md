@@ -70,3 +70,20 @@ Sanitizers work under GCC with the `asan` and `ubsan` features. The toolchain li
 bazel test --@rules_dx//cc/toolchains:compiler=gcc --features=asan //pkg:test
 bazel test --@rules_dx//cc/toolchains:compiler=gcc --features=ubsan //pkg:test
 ```
+
+## MSVC
+
+Select the MSVC toolchain in `.bazelrc`:
+
+```text
+common --@rules_dx//cc/toolchains:compiler=msvc
+```
+
+It supports a Windows x86_64 host that targets Windows x86_64. Accept the license in the root `MODULE.bazel`:
+
+```text
+msvc = use_extension("@rules_dx//cc/toolchains/msvc:repos.bzl", "msvc")
+msvc.license(accept = ["visual-studio-build-tools"])
+```
+
+Any other host or target platform fails with a message that names the supported pair. There is no clang-cl fallback.

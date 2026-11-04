@@ -1,6 +1,7 @@
 load("//cc/toolchains/msvc:tests.bzl", "msvc_toolchain_tests")
 load("//quality:fixtures.bzl", "real_source_target")
-load(":repos_tests.bzl", "msvc_repos_tests", "msvc_unavailable_tests")
+load(":repos_tests.bzl", "msvc_repos_tests", "msvc_unavailable_tests", "msvc_unsupported_tests")
+load(":unavailable.bzl", "UNSUPPORTED", "msvc_unavailable")
 
 package(default_visibility = ["//cc/toolchains:__subpackages__"])
 
@@ -9,6 +10,15 @@ msvc_toolchain_tests(name = "msvc")
 msvc_repos_tests(name = "msvc_repos")
 
 msvc_unavailable_tests(name = "msvc_unavailable")
+
+msvc_unsupported_tests(name = "msvc_unsupported")
+
+msvc_unavailable(
+    name = "unsupported",
+    error = UNSUPPORTED,
+    tags = ["manual"],
+    visibility = ["//cc/toolchains:__pkg__"],
+)
 
 real_source_target(
     name = "corpus_starlark",
