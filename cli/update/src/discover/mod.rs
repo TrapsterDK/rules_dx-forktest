@@ -31,6 +31,8 @@ pub struct Candidate {
     pub latest: String,
     pub published: Option<String>,
     pub prerelease: bool,
+    /// The GitHub repository as `owner/name`, when the registry names one.
+    pub repo: Option<String>,
 }
 
 /// One package that could not be looked up.
@@ -47,6 +49,23 @@ pub struct Findings {
     pub candidates: Vec<Candidate>,
     pub errors: Vec<LookupError>,
     pub unknown: Vec<LookupError>,
+}
+
+/// Reads `owner/name` from a GitHub repository URL or `github:owner/name` shorthand.
+pub fn github_repo(url: &str) -> Option<String> {
+    let url = url.trim();
+    let path = url
+        .strip_prefix("github:")
+        .or_else(|| url.split_once("github.com").map(|(_, rest)| rest))?;
+    let mut parts = path.trim_start_matches([':', '/']).split('/');
+    let owner = parts.next().filter(|part| !part.is_empty())?;
+    let name = parts.next()?;
+    let name = name.strip_suffix(".git").unwrap_or(name);
+    let name = name
+        .split(['#', '?'])
+        .next()
+        .filter(|part| !part.is_empty())?;
+    Some(format!("{owner}/{name}"))
 }
 
 /// Keeps a package when no filter is given or the filter names it.
@@ -138,8 +157,22 @@ pub(crate) fn release_cmp(a: &str, b: &str) -> std::cmp::Ordering {
 
 #[cfg(test)]
 mod tests {
-    use super::{numeric_cmp, release_cmp, Registry};
+    use super::{github_repo, numeric_cmp, release_cmp, Registry};
     use std::cmp::Ordering;
+
+    #[test]
+    fn github_repo_reads_the_usual_url_shapes() {
+        for url in [
+            "git+https://github.com/o/r.git",
+            "https://github.com/o/r/tree/main",
+            "git@github.com:o/r.git",
+            "github:o/r",
+        ] {
+            assert_eq!(github_repo(url).as_deref(), Some("o/r"), "{url}");
+        }
+        assert_eq!(github_repo("https://gitlab.com/o/r"), None);
+        assert_eq!(github_repo("https://github.com/o"), None);
+    }
 
     #[test]
     fn registry_urls_for_every_ecosystem() {

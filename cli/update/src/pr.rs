@@ -138,7 +138,7 @@ pub fn body(plan: &GroupPlan, numstat: &[(String, u64, u64)]) -> String {
             ""
         };
         let pre = if c.prerelease { ", prerelease" } else { "" };
-        let _ = writeln!(
+        let _ = write!(
             text,
             "- {}:{} {} -> {} ({}{age}{pre})",
             c.set,
@@ -147,6 +147,14 @@ pub fn body(plan: &GroupPlan, numstat: &[(String, u64, u64)]) -> String {
             c.latest,
             item.registry.url(&c.package)
         );
+        if let Some(repo) = &c.repo {
+            let _ = write!(
+                text,
+                ": [compare](https://github.com/{repo}/compare/{}...{}), [release](https://github.com/{repo}/releases/tag/{})",
+                c.current, c.latest, c.latest
+            );
+        }
+        text.push('\n');
     }
     if !numstat.is_empty() {
         text.push_str("\n| Lock file | Added | Removed |\n| --- | --- | --- |\n");
@@ -224,6 +232,7 @@ mod tests {
                 latest: latest.into(),
                 published: None,
                 prerelease: false,
+                repo: None,
             },
             registry,
         }
@@ -281,6 +290,23 @@ mod tests {
         ));
         assert!(text.contains("| Cargo.lock | 4 | 2 |"));
         assert!(!body(&got[0], &[]).contains("Lock file"));
+    }
+
+    #[test]
+    fn body_links_compare_and_release_when_the_repo_is_known() {
+        let mut one = plan(
+            &[item("npm", "left-pad", "2.0.0", Registry::Npm)],
+            Group::All,
+        );
+        one[0].items[0].candidate.repo = Some("o/left-pad".into());
+        assert!(body(&one[0], &[]).contains(
+            ": [compare](https://github.com/o/left-pad/compare/1.0.0...2.0.0), [release](https://github.com/o/left-pad/releases/tag/2.0.0)\n"
+        ));
+        let plain = plan(
+            &[item("npm", "left-pad", "2.0.0", Registry::Npm)],
+            Group::All,
+        );
+        assert!(!body(&plain[0], &[]).contains("compare"));
     }
 
     #[test]

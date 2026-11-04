@@ -65,6 +65,7 @@ pub fn outdated(
                 latest: latest.1,
                 published,
                 prerelease: !latest.0.pre.is_empty(),
+                repo: None,
             });
         }
     }
@@ -167,6 +168,7 @@ mod tests {
                 latest: "1.1.0".into(),
                 published: Some("2026-02-03T00:00:00Z".into()),
                 prerelease: false,
+                repo: None,
             })
         );
     }

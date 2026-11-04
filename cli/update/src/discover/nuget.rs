@@ -53,6 +53,7 @@ pub fn outdated(
                     latest: latest.clone(),
                     published: None,
                     prerelease: latest.contains('-'),
+                    repo: None,
                 });
             }
         }
@@ -156,6 +157,7 @@ mod tests {
                 latest: "13.0.3".into(),
                 published: None,
                 prerelease: false,
+                repo: None,
             }]
         );
     }

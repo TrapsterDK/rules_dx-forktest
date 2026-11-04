@@ -61,11 +61,11 @@ pub fn outdated(
             package: name.clone(),
             reason,
         };
-        let release = match fetch
-            .get(&format!("{base}/{name}"))
-            .and_then(|body| latest(&body, prereleases))
-        {
-            Ok(release) => release,
+        let (release, repo) = match fetch.get(&format!("{base}/{name}")).and_then(|body| {
+            let release = latest(&body, prereleases)?;
+            Ok((release, repo(&body)))
+        }) {
+            Ok(found) => found,
             Err(reason) => {
                 found.errors.push(error(reason));
                 continue;
@@ -87,6 +87,7 @@ pub fn outdated(
                     latest: version.to_string(),
                     published: published.clone(),
                     prerelease: version.is_prerelease(),
+                    repo: repo.clone(),
                 });
             }
         }
@@ -99,6 +100,12 @@ fn skipped(spec: &str) -> bool {
         .iter()
         .any(|prefix| spec.starts_with(prefix))
         || (spec.contains('/') && !spec.starts_with('@'))
+}
+
+fn repo(body: &str) -> Option<String> {
+    let doc: serde_json::Value = serde_json::from_str(body).ok()?;
+    let field = &doc["repository"];
+    super::github_repo(field.as_str().or_else(|| field["url"].as_str())?)
 }
 
 type Latest = Option<(Version, Option<String>)>;
@@ -196,6 +203,17 @@ mod tests {
     }
 
     #[test]
+    fn the_repository_field_may_be_a_string_or_an_object() {
+        let object = r#"{"repository":{"type":"git","url":"git+https://github.com/o/r.git"}}"#;
+        assert_eq!(repo(object).as_deref(), Some("o/r"));
+        assert_eq!(
+            repo(r#"{"repository":"github:o/r"}"#).as_deref(),
+            Some("o/r")
+        );
+        assert_eq!(repo("{}"), None);
+    }
+
+    #[test]
     fn a_range_that_still_matches_is_current() {
         let found = run(&[]);
         assert!(!names(&found).contains(&"fresh"));
@@ -212,6 +230,7 @@ mod tests {
             latest: "2.0.0".into(),
             published: Some("2026-01-02T00:00:00.000Z".into()),
             prerelease: false,
+            repo: None,
         }));
     }
 

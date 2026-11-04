@@ -60,6 +60,7 @@ pub fn outdated(
                     latest: release.version.to_string(),
                     published: release.published.clone(),
                     prerelease: !release.version.pre.is_empty(),
+                    repo: None,
                 });
             }
         }
@@ -236,6 +237,7 @@ wsdep = "1.0"
                 latest: "0.4.0".into(),
                 published: Some("2026-01-02T00:00:00Z".into()),
                 prerelease: false,
+                repo: None,
             })
         );
         assert!(found.candidates.iter().any(|c| c.package == "wsdep"));

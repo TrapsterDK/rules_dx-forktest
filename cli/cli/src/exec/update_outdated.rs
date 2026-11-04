@@ -546,6 +546,7 @@ mod tests {
             latest: "2".into(),
             published: None,
             prerelease: false,
+            repo: None,
         };
         let mut map = BTreeMap::new();
         map.insert("bazel".to_owned(), Registry::Bcr);
@@ -603,6 +604,7 @@ mod tests {
             latest: "2.0.0".into(),
             published: None,
             prerelease: false,
+            repo: None,
         };
         assert_eq!(
             command_for(&candidate, Ecosystem::Cargo),
@@ -624,6 +626,7 @@ mod tests {
                 latest: "2.0.0".into(),
                 published: Some("2026-01-01T00:00:00Z".into()),
                 prerelease: false,
+                repo: None,
             }],
             errors: Vec::new(),
             unknown: Vec::new(),
