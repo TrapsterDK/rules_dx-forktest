@@ -13,6 +13,15 @@ consumer_deps_json(name = "consumer_deps_json")
 versions_rs(name = "versions_rs")
 
 # keep
+rust_library(
+    name = "dx_versions",
+    srcs = [":versions_rs"],
+    crate_name = "dx_versions",
+    crate_root = ":versions_rs",
+    edition = "2021",
+)
+
+# keep
 rust_test(
     name = "consumer_deps_test",
     srcs = ["consumer_deps_test.rs"],
