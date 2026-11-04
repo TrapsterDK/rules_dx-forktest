@@ -4,8 +4,8 @@ use dx_module_bazel::ModuleFile;
 
 use super::AdoptError;
 
-pub const DX_VERSION: &str = "0.0.0";
-pub const MODULE_VERSION: &str = "0.0.0";
+pub const DX_VERSION: &str = "0.0.0-forktest.1";
+pub const MODULE_VERSION: &str = "0.0.0-forktest.1";
 
 pub fn pin_is_valid(pin: &str) -> bool {
     !pin.is_empty() && semver::Version::parse(pin).is_ok()
