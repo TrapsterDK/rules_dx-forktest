@@ -614,14 +614,18 @@ pub fn qualify(
                     None => false,
                 };
                 if !ok {
-                    return Err(fail(
-                        "msvc argv differs from the action beyond the projected prefix".to_string(),
-                    ));
+                    return Err(fail(format!(
+                        "msvc argv differs from the action beyond the projected prefix: {}",
+                        describe_mismatch(exported, &expected)
+                    )));
                 }
             }
             _ => {
                 if *exported != expected {
-                    return Err(fail("argv differs from the action argv".to_string()));
+                    return Err(fail(format!(
+                        "argv differs from the action argv: {}",
+                        describe_mismatch(exported, &expected)
+                    )));
                 }
             }
         }
@@ -639,13 +643,11 @@ pub fn qualify(
 
 fn unquote_line(line: &str) -> String {
     let line = line.trim_end_matches('\r');
-    match line
+    let inner = line
         .strip_prefix('"')
         .and_then(|rest| rest.strip_suffix('"'))
-    {
-        Some(inner) => inner.to_string(),
-        None => line.to_string(),
-    }
+        .unwrap_or(line);
+    inner.replace("\\\"", "\"")
 }
 
 /// Expands every `@response` argument against the execroot.
@@ -1014,6 +1016,21 @@ pub fn read_input(path: &str) -> Result<String, Error> {
         reason: err.to_string(),
     })
 }
+fn describe_mismatch(exported: &[String], expected: &[String]) -> String {
+    let at = exported
+        .iter()
+        .zip(expected)
+        .position(|(left, right)| left != right)
+        .unwrap_or(exported.len().min(expected.len()));
+    format!(
+        "exported has {} arguments, action has {}; first difference at {at}: exported {:?}, action {:?}",
+        exported.len(),
+        expected.len(),
+        exported.get(at),
+        expected.get(at)
+    )
+}
+
 #[cfg(test)]
 #[path = "lib_tests.rs"]
 mod lib_tests;
