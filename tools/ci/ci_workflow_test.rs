@@ -188,3 +188,16 @@ fn the_gate_jobs_raise_the_bazel_heap_before_setup_bazel_calls_bazel() {
         );
     }
 }
+
+#[test]
+fn the_families_job_runs_every_module_before_it_fails() {
+    let all = scripts(CI, "families");
+    assert!(
+        all.contains("bazel test --keep_going"),
+        "{CI} job families must keep going past one module's analysis error: {all}"
+    );
+    assert!(
+        all.contains("|| failed=1") && all.contains("exit \"$failed\""),
+        "{CI} job families must record a failed module and exit non-zero after the loop: {all}"
+    );
+}
