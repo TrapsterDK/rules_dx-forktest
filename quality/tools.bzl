@@ -1358,6 +1358,7 @@ TOOLS = [
     tool(
         id = "ktlint",
         adapters = {"lint": ["kotlin"]},
+        config_suffix = [".editorconfig"],
         support = [
             row(
                 capability = "lint",
