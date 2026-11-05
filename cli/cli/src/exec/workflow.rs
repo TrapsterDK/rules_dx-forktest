@@ -639,7 +639,7 @@ mod tests {
     #[test]
     fn profile_passes_the_trace_flag_and_reports_json_and_text() {
         let harness = Harness::new("build-profile");
-        let dir = harness.workspace.join(".dx/profile");
+        let dir = harness.workspace.join(".dx").join("profile");
         std::fs::create_dir_all(&dir).expect("dir");
         std::fs::write(
             dir.join("trace.json"),
@@ -669,7 +669,7 @@ mod tests {
     #[test]
     fn explain_saves_the_execution_log_and_keeps_two() {
         let harness = Harness::new("build-explain");
-        let store = harness.workspace.join(".dx/explain");
+        let store = harness.workspace.join(".dx").join("explain");
         for number in 1..=3 {
             let inv = invocation(&["build", "--explain", "--output=json"]);
             let run = harness.probe_with(&inv, &[Some(0)]);
@@ -713,7 +713,11 @@ mod tests {
         let harness = Harness::new("build-explain-text");
         let (code, _, err) = harness.run(&["build", "--explain"]);
         assert_eq!(code, 0, "{err}");
-        let log = harness.workspace.join(".dx/explain/1.binpb.zst");
+        let log = harness
+            .workspace
+            .join(".dx")
+            .join("explain")
+            .join("1.binpb.zst");
         assert!(
             err.contains(&format!("dx: execution log {}", log.display())),
             "{err}"
