@@ -25,11 +25,17 @@ const HOST_GLIBC: &[&str] = &[
 #[cfg(target_os = "macos")]
 const HOST_GLIBC: &[&str] = &[];
 
+#[cfg(windows)]
+const HOST_GLIBC: &[&str] = &[];
+
 #[cfg(target_os = "linux")]
 const HOST_PREFIXES: &[&str] = &["/usr/", "/lib/", "/lib64/", "/opt/"];
 
 #[cfg(target_os = "macos")]
 const HOST_PREFIXES: &[&str] = &["/usr/local/", "/opt/", "/Library/Frameworks/"];
+
+#[cfg(windows)]
+const HOST_PREFIXES: &[&str] = &["C:/Qt/", "C:/msys64/", "C:/vcpkg/"];
 
 #[cfg(target_os = "macos")]
 const HOST_ROUTES: [(&str, &str); 4] = [
@@ -39,17 +45,31 @@ const HOST_ROUTES: [(&str, &str); 4] = [
     ("QT_CONF_PATH", "/opt/homebrew/bin/qt.conf"),
 ];
 
+#[cfg(windows)]
+const HOST_ROUTES: [(&str, &str); 4] = [
+    ("PATH", "C:/Qt/6.11.3/msvc2022_64/bin"),
+    ("QML_IMPORT_PATH", "C:/Qt/6.11.3/msvc2022_64/qml"),
+    ("QT_PLUGIN_PATH", "C:/Qt/6.11.3/msvc2022_64/plugins"),
+    ("QT_CONF_PATH", "C:/Qt/6.11.3/msvc2022_64/bin/qt.conf"),
+];
+
 #[cfg(target_os = "linux")]
 const LOADER_TRACE: (&str, &str) = ("LD_DEBUG", "files");
 
 #[cfg(target_os = "macos")]
 const LOADER_TRACE: (&str, &str) = ("DYLD_PRINT_LIBRARIES", "1");
 
+#[cfg(windows)]
+const LOADER_TRACE: (&str, &str) = ("DX_QT_TRACE_MODULES", "1");
+
 #[cfg(target_os = "linux")]
 const OFFSCREEN: &str = "libqoffscreen.so";
 
 #[cfg(target_os = "macos")]
 const OFFSCREEN: &str = "libqoffscreen.dylib";
+
+#[cfg(windows)]
+const OFFSCREEN: &str = "qoffscreen.dll";
 
 #[cfg(target_os = "linux")]
 const PROBE_LOADS: &[&str] = &[
@@ -61,6 +81,9 @@ const PROBE_LOADS: &[&str] = &[
 
 #[cfg(target_os = "macos")]
 const PROBE_LOADS: &[&str] = &["QtQml", "libqmlplugin.dylib"];
+
+#[cfg(windows)]
+const PROBE_LOADS: &[&str] = &["Qt6Core", "Qt6Qml", "qmlplugin.dll"];
 
 #[cfg(target_os = "linux")]
 const GUI_LOADS: &[&str] = &[
@@ -75,6 +98,9 @@ const GUI_LOADS: &[&str] = &[
 
 #[cfg(target_os = "macos")]
 const GUI_LOADS: &[&str] = &["QtWidgets", "QtQuick", "libqoffscreen.dylib"];
+
+#[cfg(windows)]
+const GUI_LOADS: &[&str] = &["Qt6Widgets", "Qt6Quick", "qoffscreen.dll"];
 
 #[cfg(target_os = "linux")]
 const LINT_LOADS: &[&str] = &[
@@ -222,6 +248,16 @@ fn initialized_objects(stderr: &str) -> BTreeSet<String> {
         .collect()
 }
 
+/// gui_test prints one `dx-module: <path>` line per loaded module when DX_QT_TRACE_MODULES is set.
+#[cfg(windows)]
+fn initialized_objects(stderr: &str) -> BTreeSet<String> {
+    stderr
+        .lines()
+        .filter_map(|line| line.strip_prefix("dx-module: "))
+        .map(|path| path.trim().to_owned())
+        .collect()
+}
+
 fn loaded(paths: &BTreeSet<String>, name: &str) -> bool {
     paths.iter().any(|path| file_name(path).starts_with(name))
 }
@@ -245,8 +281,10 @@ fn spdx_package(document: &Value, name: &str) -> Value {
 #[test]
 fn probe_evaluates_qml_against_only_pinned_libraries() {
     let probe = tool("DX_QT_PROBE");
-    let envs = &HOST_ROUTES[1..];
-    let run = dx_testing::run(&probe, &[], envs).expect("run probe");
+    let path = runtime_path();
+    let mut envs = vec![("PATH", path.as_str())];
+    envs.extend(&HOST_ROUTES[1..]);
+    let run = dx_testing::run(&probe, &[], &envs).expect("run probe");
     assert!(run.status.success(), "probe failed:\n{}", run.combined());
     assert!(
         run.stdout
@@ -259,6 +297,32 @@ fn probe_evaluates_qml_against_only_pinned_libraries() {
     for name in PROBE_LOADS {
         assert!(loaded(&objects, name), "{name} not loaded:\n{}", run.stdout);
     }
+}
+
+/// Windows loads DLLs from next to the symlinked executable, not next to its target,
+/// so the pinned runtime `bin` directory goes first on PATH for the children.
+#[cfg(windows)]
+fn runtime_path() -> String {
+    let paths = std::env::var("DX_QT_RUNTIME").expect("DX_QT_RUNTIME must name files");
+    let core = paths
+        .split_whitespace()
+        .find(|path| file_name(path) == "Qt6Core.dll")
+        .unwrap_or_else(|| panic!("DX_QT_RUNTIME holds no Qt6Core.dll: {paths}"));
+    let bin = dx_testing::resolve_runfiles(core)
+        .parent()
+        .expect("runtime directory")
+        .to_str()
+        .expect("utf-8 path")
+        .to_owned();
+    match std::env::var("PATH") {
+        Ok(path) => format!("{bin};{path}"),
+        Err(_) => bin,
+    }
+}
+
+#[cfg(not(windows))]
+fn runtime_path() -> String {
+    std::env::var("PATH").unwrap_or_default()
 }
 
 fn directory_of(variable: &str, name: &str) -> String {
@@ -283,7 +347,9 @@ fn run_gui(platform: &str) -> dx_testing::Run {
         .parent()
         .and_then(Path::parent)
         .expect("import root");
+    let path = runtime_path();
     let mut envs = vec![
+        ("PATH", path.as_str()),
         LOADER_TRACE,
         ("QML_IMPORT_PATH", imports.to_str().expect("utf-8 path")),
         ("QT_QPA_PLATFORM", platform),
@@ -415,6 +481,8 @@ fn qmllint_fails_unqualified_access_with_a_located_warning() {
     assert_eq!(warning["column"], 21);
 }
 
+// qmllint is a Qt tool and prints no module list on Windows.
+#[cfg(not(windows))]
 #[test]
 fn tools_ignore_host_routes_and_load_pinned_plugins() {
     let file = scratch_file("plugins.qml", UNQUALIFIED);
@@ -433,7 +501,7 @@ fn tools_ignore_host_routes_and_load_pinned_plugins() {
     );
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", windows))]
 fn expected_licenses() -> BTreeSet<String> {
     BTreeSet::from(["qt".to_owned()])
 }
