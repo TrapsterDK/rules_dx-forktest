@@ -348,6 +348,7 @@ fn parse_inner<S: AsRef<OsStr>>(
         disk,
         bases,
         capabilities,
+        files,
         explain,
         build_profile,
         old_log,
@@ -479,7 +480,10 @@ fn parse_inner<S: AsRef<OsStr>>(
     let mut fail_on = if fail_on_none {
         // The unused tools only emit warnings, so only a tool error fails the run.
         Threshold::Error
-    } else if matches!(fail_on_name.as_str(), "uncovered" | "no-collector" | "unused") {
+    } else if matches!(
+        fail_on_name.as_str(),
+        "uncovered" | "no-collector" | "unused"
+    ) {
         Threshold::Warning
     } else {
         Threshold::parse(&fail_on_name).map_err(|_| ArgsError::BadFailOn {
@@ -749,6 +753,7 @@ fn parse_inner<S: AsRef<OsStr>>(
         disk,
         bases,
         capabilities,
+        files,
         explain,
         build_profile,
         exec_log: None,
