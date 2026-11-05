@@ -108,7 +108,7 @@ Each cell names the tools `dx lint`, `dx format`, or `dx typecheck` runs, and th
 | Rust | `clippy`, `typos` | `rustfmt` | `rustc` | `rustdoc` | `llvm-cov` | `rustc dead_code` |
 | Scala | `scalafix`, `typos` | `scalafmt` | `scalac` | `scaladoc` | `jacoco` | `scalac -Wunused` |
 | Svelte | `eslint`, `typos` | `prettier` | `tsc` | `svelte2tsx` | no: js_test has no dx coverage wiring | no |
-| TypeScript | `biome`, `typos` | `biome`, `prettier` | `tsc` | `typedoc` | `jest` | `knip (dx unused)`, `eslint no-unused-vars` |
+| TypeScript | `biome`, `eslint`, `typos` | `biome`, `prettier` | `tsc` | `typedoc` | `jest` | `knip (dx unused)`, `eslint no-unused-vars` |
 | Vue | `eslint`, `typos` | `prettier` | `tsc` | `vue-component-meta` | no: js_test has no dx coverage wiring | no |
 | Zig | `typos`, `zig_ast_check` | `zig_fmt` | `zig` | no | `kcov` (kcov runs on Linux only) | no |
 | Apple | `clang_tidy`, `typos` | `clang_format` | `clang_syntax` (not on `linux_x86_64`: objc_library builds only with an Apple toolchain; `linux_arm64`: objc_library builds only with an Apple toolchain; `windows_x86_64`: objc_library builds only with an Apple toolchain; `windows_arm64`: objc_library builds only with an Apple toolchain) | n/a | no: no dx coverage wiring in the Apple rules | n/a |
