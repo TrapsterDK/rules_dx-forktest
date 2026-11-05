@@ -1585,7 +1585,10 @@ fn julia_manifest_lists_packages_and_skips_stdlibs() {
         .iter()
         .map(|package| (package.name.as_str(), package.version.as_str()))
         .collect();
-    assert_eq!(found, [("Foo", "0.1.0"), ("Foo", "0.2.0"), ("HTTP", "1.10.4")]);
+    assert_eq!(
+        found,
+        [("Foo", "0.1.0"), ("Foo", "0.2.0"), ("HTTP", "1.10.4")]
+    );
     assert!(packages.iter().all(|package| package.set == "julia"));
 }
 
@@ -1623,4 +1626,29 @@ fn rebar_lock_lists_pkg_entries() {
         (packages[0].name.as_str(), packages[0].version.as_str()),
         ("cowlib", "2.12.1")
     );
+}
+
+#[test]
+fn composer_lock_lists_both_arrays_and_skips_branches() {
+    let text = r#"{"packages":[{"name":"b/two","version":"v1.2.0"},{"name":"a/one","version":"2.0.0"},{"name":"c/br","version":"dev-main"}],"packages-dev":[{"name":"d/dev","version":"v0.5.1"}]}"#;
+    let packages = parse_composer_lock(text).expect("parses");
+    let found: Vec<_> = packages
+        .iter()
+        .map(|package| {
+            (
+                package.set.as_str(),
+                package.name.as_str(),
+                package.version.as_str(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        found,
+        [
+            ("packagist", "a/one", "2.0.0"),
+            ("packagist", "b/two", "1.2.0"),
+            ("packagist", "d/dev", "0.5.1"),
+        ]
+    );
+    assert!(parse_composer_lock("[").is_err());
 }
