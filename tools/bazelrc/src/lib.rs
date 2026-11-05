@@ -42,7 +42,7 @@ const UPSTREAM_FLAGS: [Flag; 3] = [
     ),
 ];
 
-const COVERAGE_FLAGS: [Flag; 6] = [
+const COVERAGE_FLAGS: [Flag; 7] = [
     (
         "common --enable_platform_specific_config",
         "Apply the linux, macos and windows config lines on matching hosts.",
@@ -66,6 +66,10 @@ const COVERAGE_FLAGS: [Flag; 6] = [
     (
         "coverage --instrumentation_filter=^//",
         "Instrument only targets in the main repository.",
+    ),
+    (
+        "coverage --instrument_test_targets",
+        "Instrument test targets so sources a test compiles itself are counted.",
     ),
 ];
 
@@ -809,6 +813,7 @@ mod tests {
                 "coverage --test_tag_filters=-no-coverage",
                 "coverage --enable_runfiles",
                 "coverage --instrumentation_filter=^//",
+                "coverage --instrument_test_targets",
                 "common --nolegacy_external_runfiles",
                 "build:windows --nobuild_runfile_links",
                 "common --incompatible_strict_action_env",
