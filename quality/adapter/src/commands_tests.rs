@@ -1648,6 +1648,7 @@ fn file_family_format_checks_and_fixes_use_each_tool_own_flags() {
             BIN,
             "--noprofile",
             "--severity=5",
+            "--include=Variables::ProhibitUnusedVariables",
             "--nocolor",
             "--quiet",
             "--verbose",
