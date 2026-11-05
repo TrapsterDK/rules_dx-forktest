@@ -78,10 +78,11 @@ _dsym_transition = transition(
 )
 
 def _dsym_pair_impl(ctx):
+    binary_target = ctx.attr.binary[0]
     binary = ctx.executable.binary
-    dsyms = getattr(ctx.attr.binary[OutputGroupInfo], "dsyms", None)
+    dsyms = getattr(binary_target[OutputGroupInfo], "dsyms", None)
     if dsyms == None or len(dsyms.to_list()) != 1:
-        fail("%s did not produce one dSYM bundle; the dx_dsym binary must be a macOS cc_binary" % ctx.attr.binary.label)
+        fail("%s did not produce one dSYM bundle; the dx_dsym binary must be a macOS cc_binary" % binary_target.label)
     bundle = dsyms.to_list()[0]
     dsymutil = ctx.executable._dsymutil
     manifest = ctx.actions.declare_file(ctx.label.name + ".dsym.json")
@@ -103,8 +104,14 @@ def _dsym_pair_impl(ctx):
         mnemonic = "DxDsym",
         progress_message = "Pairing the dSYM of %{label}",
     )
+    executable = ctx.actions.declare_file(ctx.label.name)
+    ctx.actions.symlink(output = executable, target_file = binary, is_executable = True)
     return [
-        ctx.attr.binary[DefaultInfo],
+        DefaultInfo(
+            files = depset([executable]),
+            executable = executable,
+            runfiles = binary_target[DefaultInfo].default_runfiles,
+        ),
         OutputGroupInfo(symbols = depset([bundle, manifest])),
     ]
 
@@ -120,6 +127,7 @@ _dsym_pair = rule(
         ),
         "_dsymutil": attr.label(
             default = Label("@llvm//tools:dsymutil"),
+            allow_single_file = True,
             executable = True,
             cfg = "exec",
         ),
