@@ -291,7 +291,8 @@ index 0fa4fd9..eba5803 100644
 +            {nm} -Ujpg "$lib" | {{ IFS= read -r s && printf -- '-u %s\\n' "$s"; }} >> {out}
          done
          """.format(
-             nm = cc.tools.nm,
+-            nm = cc.tools.nm,
++            nm = cc.tools.nm or "/usr/bin/nm",
 -            head = posix.commands["head"],
 -            sed = posix.commands["sed"],
              solibs = " ".join(["\"" + lib.path + "\"" for lib in cc_dynamic_libs]),
@@ -308,15 +309,15 @@ index 0fa4fd9..eba5803 100644
  
      args.add_all(hs.toolchain.ghcopts)
      args.add_all(compiler_flags)
-@@ -356,7 +354,7 @@ def link_library_static(hs, cc, _posix, _dep_info, object_files, my_pkg_id, with
-         )
-     else:
-         hs.actions.run(
--            inputs = inputs,
-+            inputs = depset(transitive = [inputs, cc.files]),
-             outputs = [static_library],
-             mnemonic = "HaskellLinkStaticLibrary",
-             executable = cc.tools.ar,
+@@ -323,7 +321,7 @@ def link_library_static(hs, cc, _posix, _dep_info, object_files, my_pkg_id, with
+             "lib{0}.a".format(pkg_id.library_name(hs, my_pkg_id, prof_suffix = with_profiling)),
+         ),
+     )
+-    inputs = depset(transitive = [object_files])
++    inputs = depset(transitive = [object_files, cc.files])
+     args = hs.actions.args()
+ 
+     # On Windows, any of the object files might actually be static archives already
 @@ -391,8 +389,8 @@ def link_library_dynamic(hs, cc, posix, dep_info, extra_srcs, object_files, my_p
          # assume `otool` and `install_name_tool` are available at the same location as `ar`
          ar_bindir = paths.dirname(cc.tools.ar)
