@@ -1145,7 +1145,7 @@ def qt_bundle_members(runfiles, licenses, modules, needs):
             members["plugins/" + plugin[0]] = path
             roots.extend(needs.runtime_plugin[plugin[0]])
             continue
-        if _soname(name) or name.endswith(".so"):
+        if _soname(name) or name.endswith(".so") or name.endswith(".dylib"):
             libraries.setdefault(name, path)
             if linked:
                 roots.append(name)
