@@ -1184,11 +1184,20 @@ fn git(source: &Path, args: &[&str]) -> Result<String, String> {
 fn native(path: &Path) -> bool {
     use std::io::Read;
     let mut head = [0u8; 20];
-    std::fs::File::open(path)
+    if std::fs::File::open(path)
         .and_then(|mut file| file.read_exact(&mut head))
-        .is_ok()
-        && head.starts_with(b"\x7fELF")
-        && dx_binfmt::machine(&head).is_some()
+        .is_err()
+    {
+        return false;
+    }
+    let mach_o = [
+        b"\xcf\xfa\xed\xfe".as_slice(),
+        b"\xfe\xed\xfa\xcf",
+        b"\xca\xfe\xba\xbe",
+    ]
+    .iter()
+    .any(|magic| head.starts_with(magic));
+    mach_o || (head.starts_with(b"\x7fELF") && dx_binfmt::machine(&head).is_some())
 }
 
 fn find_bazelisk(chosen: Option<&str>, path: &str) -> Result<PathBuf, String> {
@@ -1352,7 +1361,12 @@ pub fn remove_root(root: &Path) {
 // LCOV_EXCL_START - reason: runs only inside the isolated qualification, issue: 1758, policy: docs/cli/commands/build-test-coverage.md
 /// Confirms this host can create the namespaces the qualification needs.
 pub fn preflight(isolation: &Isolation) -> Result<(), String> {
-    let outcome = capture(isolation.command(Net::Denied, &["/bin/true".to_owned()]))?;
+    let true_bin = if cfg!(target_os = "macos") {
+        "/usr/bin/true"
+    } else {
+        "/bin/true"
+    };
+    let outcome = capture(isolation.command(Net::Denied, &[true_bin.to_owned()]))?;
     if outcome.exit != 0 {
         return Err(format!(
             "namespace isolation is unavailable on this host (exit {}): {}; unprivileged user, mount and network namespaces are required, and Ubuntu 24.04 needs kernel.apparmor_restrict_unprivileged_userns=0",
