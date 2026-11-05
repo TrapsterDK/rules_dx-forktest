@@ -826,7 +826,7 @@ impl RealBackend {
                 }
             }
         }
-        if tool_id == "typstyle" {
+        if tool_id == "typstyle" || tool_id == "prettier" {
             env.push((OsString::from("NO_COLOR"), OsString::from("1")));
         }
         if tool_id == "mbake" {
