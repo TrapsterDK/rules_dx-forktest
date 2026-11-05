@@ -49,12 +49,18 @@ impl Diagnostic {
 }
 
 pub fn file_uri(path: &Path) -> String {
+    let text = path.to_string_lossy().replace('\\', "/");
     let mut uri = String::from("file://");
-    for byte in path.to_string_lossy().bytes() {
+    if !text.starts_with('/') {
+        uri.push('/');
+    }
+    let drive = text.as_bytes().get(1) == Some(&b':');
+    for (i, byte) in text.bytes().enumerate() {
         match byte {
             b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'/' | b'-' | b'_' | b'.' | b'~' => {
                 uri.push(byte as char)
             }
+            b':' if drive && i == 1 => uri.push(':'),
             _ => uri.push_str(&format!("%{byte:02X}")),
         }
     }
@@ -169,7 +175,10 @@ where
         json!({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {
             "processId": std::process::id(),
             "rootUri": Value::Null,
-            "capabilities": {"textDocument": {"publishDiagnostics": {}}},
+            "capabilities": {
+                "textDocument": {"publishDiagnostics": {}},
+                "workspace": {"workspaceFolders": true},
+            },
         }}),
     )?;
     loop {
