@@ -12,7 +12,7 @@
 use std::path::PathBuf;
 use std::process::{Command, ExitCode};
 
-use cc_context::{AqueryGraph, Driver, Error};
+use cc_context::{AqueryGraph, Error};
 
 const USAGE: &str = "Usage: bazel run //cc/context:qualify -- --target <label>... \
 [--compiler <name>] [--output <file>] [--bazel <bin>] [-- <bazel flags>...]";
@@ -134,7 +134,8 @@ fn run(args: Vec<String>) -> Result<(), Error> {
         .trim()
         .to_string();
 
-    let graph = AqueryGraph::parse(&record)?;
+    let mut graph = AqueryGraph::parse(&record)?;
+    graph.retain_owned(&targets);
     let identities = cc_context::read_identities(&identity_paths)?;
     let commands = graph.compile_commands(&PathBuf::from(&execroot), &identities)?;
     if commands.is_empty() {
@@ -146,18 +147,13 @@ fn run(args: Vec<String>) -> Result<(), Error> {
 
     let (version, _) = runner.exec("git", &["rev-parse".to_string(), "HEAD".to_string()])?;
     let bazel_version = runner.bazel(&["version"], &[])?;
-    let msvc = commands
-        .iter()
-        .any(|c| matches!(&c.identity, Some(i) if i.driver == Driver::Msvc));
     let banner = match commands.first().and_then(|c| c.arguments.first()) {
-        Some(argv0) if !msvc => {
-            let (out, err) = runner.exec(argv0, &["--version".to_string()])?;
+        Some(argv0) => {
+            let (program, args) = cc_context::version_probe(&PathBuf::from(&execroot), argv0);
+            let (out, err) = runner.exec(&program.to_string_lossy(), &args)?;
             format!("{out}{err}")
         }
-        _ => runner
-            .exec("cl.exe", &[])
-            .map(|(_, err)| err)
-            .unwrap_or_default(),
+        None => String::new(),
     };
     let evidence = serde_json::json!({
         "sha": version.trim(),

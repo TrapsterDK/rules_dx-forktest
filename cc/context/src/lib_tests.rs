@@ -490,6 +490,43 @@ fn an_msvc_action_without_include_fails_closed() {
 }
 
 #[test]
+fn an_msvc_action_with_argv_imsvc_needs_no_env() {
+    let root = scratch("msvc_argv");
+    let graph = rsp_graph(
+        &root,
+        "/imsvcC:/inc --target=x86_64-pc-windows-msvc",
+        "k8-fastbuild",
+    );
+    let commands = graph
+        .compile_commands(&root, &[identity("k8-fastbuild", Driver::Msvc)])
+        .expect("commands");
+    assert_eq!(
+        commands[0].arguments,
+        strings(&[
+            "tool",
+            "--odd",
+            "-c",
+            "pkg/a.cc",
+            "/imsvcC:/inc",
+            "--target=x86_64-pc-windows-msvc"
+        ])
+    );
+    assert!(!commands[0].arguments.contains(&"/X".to_string()));
+    fs::remove_dir_all(&root).ok();
+}
+
+#[test]
+fn the_version_probe_resolves_argv0_and_skips_the_flag_for_cl() {
+    let root = Path::new("/exec");
+    let (path, args) = version_probe(root, "external/llvm/bin/clang-cl.exe");
+    assert_eq!(path, root.join("external/llvm/bin/clang-cl.exe"));
+    assert_eq!(args, strings(&["--version"]));
+    let (path, args) = version_probe(root, "external/msvc/bin/Hostx64/x64/CL.exe");
+    assert_eq!(path, root.join("external/msvc/bin/Hostx64/x64/CL.exe"));
+    assert!(args.is_empty());
+}
+
+#[test]
 fn each_configuration_gets_its_own_identity() {
     let root = scratch("configs");
     let mut graph = rsp_graph(&root, "-DX=1", "arm64-opt");
@@ -712,6 +749,14 @@ fn qualify_accepts_msvc_projected_prefix() {
 }
 
 #[test]
+fn qualify_accepts_clang_cl_argv_imsvc_unchanged() {
+    let argv = ["clang-cl.exe", "/imsvcC:/inc", "/c", "a.cc"];
+    let graph = qualify_graph(r#""clang-cl.exe","/imsvcC:/inc","/c","a.cc""#, "");
+    let done = qualify(&graph, &[exported(&argv, Some(msvc()))]).expect("qualified");
+    assert_eq!(done[0].expected, done[0].exported);
+}
+
+#[test]
 fn qualify_rejects_extra_injected_flag() {
     let graph = qualify_graph(r#""clang-cl.exe","/c","a.cc""#, "");
     let command = exported(
@@ -741,4 +786,21 @@ fn qualify_rejects_missing_param_file() {
         qualify(&graph, &[command]),
         Err(Error::Unqualified { .. })
     ));
+}
+
+#[test]
+fn retain_owned_drops_compile_actions_of_other_targets() {
+    let text = r#"{"actions":[
+        {"mnemonic":"CppCompile","targetId":1},
+        {"mnemonic":"CppCompile","targetId":2},
+        {"mnemonic":"Other","targetId":2}],
+      "targets":[{"id":1,"label":"//pkg:probe_upstream"},{"id":2,"label":"@@llvm+//tools:tool"}]}"#;
+    let mut graph = AqueryGraph::parse(text).expect("graph");
+    graph.retain_owned(&["//pkg:probe".to_string()]);
+    let ids: Vec<(&str, i64)> = graph
+        .actions
+        .iter()
+        .map(|a| (a.mnemonic.as_str(), a.target_id))
+        .collect();
+    assert_eq!(ids, [("CppCompile", 1), ("Other", 2)]);
 }
