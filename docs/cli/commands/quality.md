@@ -408,7 +408,7 @@ Declare a config with the `*_config` rule from `@rules_dx//quality:native_config
 | `detekt` | no | `.yml` or `.yaml`; replaces detekt's defaults, so rules not in the file do not run | | `detekt_config` |
 | `ktlint` | no | `.editorconfig`, default `intellij_idea` style with three rules off | | `ktlint_config` |
 | `ruff` | yes | `ruff.toml` | | `ruff_config` |
-| `scalafix` | no | `.scalafix.conf`, default `rules = [RemoveUnused]`; `RemoveUnused` needs the `@rules_dx//scala/toolchain:semanticdb` toolchain, which sets `-Wunused` and `-Wconf:cat=unused:info` | | `scalafix_config` |
+| `scalafix` | no | `.scalafix.conf`, default `rules = [RemoveUnused]`; `RemoveUnused` needs the `@rules_dx//scala/toolchain:semanticdb` toolchain, which sets `-Wunused` and `-Wconf:cat=unused:info`; bases `standard.conf` (`RemoveUnused`, `DisableSyntax` and two more rules) and `strict.conf` (adds `ExplicitResultTypes`, `OrganizeImports` and stricter `DisableSyntax`) in `cli/adopt/templates/config/scalafix/` | | `scalafix_config` |
 | `scalafmt` | no | `.scalafmt.conf`, default `version = 3.11.4` and `runner.dialect = scala213` (`quality/tools/jvm/scalafmt_default.conf`) | | `scalafmt_config` |
 | `sqlfluff` | yes | `.sqlfluff` | | `sqlfluff_config` |
 | `vale` | yes | `.vale.ini` | | `vale_config` |
