@@ -353,6 +353,7 @@ fn parse_inner<S: AsRef<OsStr>>(
         time,
         jobs,
         fail_survived,
+        check,
         baseline,
         bazel_startup_options: startup_tokens,
         bazel_options: option_tokens,
@@ -507,6 +508,9 @@ fn parse_inner<S: AsRef<OsStr>>(
             });
         }
     }
+    if command == Command::Release && check && apply {
+        return Err(unsupported(command, "--check with --apply"));
+    }
     if command == Command::Update && outdated {
         let culprit = if apply {
             Some("--apply")
@@ -593,7 +597,7 @@ fn parse_inner<S: AsRef<OsStr>>(
             });
         }
     }
-    if command == Command::Explain {
+    if matches!(command, Command::Explain | Command::Release) {
         if let Some(scope) = targets.first() {
             return Err(extra_positional(command, scope));
         }
