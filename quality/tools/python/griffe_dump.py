@@ -14,6 +14,8 @@ import pathlib
 import platform
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 from tool_bootstrap import import_tool
 
 FORMAT = 1
@@ -60,9 +62,9 @@ def _parse(argv):
 
 
 def _version():
-    """Returns the installed griffelib version."""
+    """Returns the installed griffelib version, or "unknown" without metadata."""
     metadata = import_tool("importlib.metadata", "version")
-    return metadata("griffelib")
+    return metadata("griffelib") or "unknown"
 
 
 def _check_sources(root, package):
