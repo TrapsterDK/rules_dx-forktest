@@ -58,6 +58,7 @@ COMPUTED_CONSTRAINTS = {
 # The API doc tool per language and the *_doc_shard macro or rule that runs it (docs_site for Rust, which takes the crate itself). None marks a gap.
 DOC_TOOLS = {
     "astro": {"tool": "astro-compiler", "shard": "astro_doc_shard"},
+    "avro": None,
     "cc": None,
     "csharp": {"tool": "csharp doc driver", "shard": "csharp_doc_shard"},
     "cuda": None,
@@ -347,7 +348,7 @@ ROWS = [
     {"name": "toml", "section": "formats", "title": "TOML"},
     {"name": "api_spec", "section": "formats", "title": "API specs"},
     {"name": "ansible", "section": "formats", "title": "Ansible"},
-    {"families": ["avro"], "name": "avro", "section": "formats", "title": "Avro"},
+    {"ci_tests": ["//avro/tests:cc_roundtrip_test", "//avro/tests:RoundtripTest"], "families": ["avro"], "name": "avro", "section": "languages", "title": "Avro"},
     {"families": ["capnp"], "name": "capnproto", "section": "formats", "title": "Cap'n Proto"},
     {"name": "bicep", "section": "formats", "title": "Bicep"},
     {"name": "cloudformation", "section": "formats", "title": "CloudFormation"},
@@ -376,6 +377,7 @@ ROWS = [
 ]
 
 NOT_LANGUAGES = [
+    "containers",
     "swift",
     "bcr_test_module",
     "ci",
