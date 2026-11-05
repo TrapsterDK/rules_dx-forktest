@@ -172,6 +172,7 @@ const BICEP_DEFAULTS_BYTES: &[u8] = b"{}\n";
 /// Home of the Bicep child: its module cache is `$HOME/.bicep`, so it starts empty and no `br:`
 /// reference resolves from the host.
 const BICEP_HOME_REL: &str = "dx-bicep/home";
+const PKL_LSP_HOME_REL: &str = ".dx-pkl-lsp/home";
 /// Empty plugin home: tflint never downloads or finds a provider ruleset.
 /// The request env key naming the provider mirror roots, joined with `|`.
 const TERRAFORM_PLUGIN_DIRS_ENV: &str = "DX_TERRAFORM_PLUGIN_DIRS";
@@ -815,6 +816,22 @@ impl RealBackend {
                 ("DOTNET_SYSTEM_GLOBALIZATION_INVARIANT", "1"),
             ] {
                 env.push((OsString::from(key), OsString::from(value)));
+            }
+        }
+        if tool_id == "pkl_lsp" {
+            // The JVM on Windows reads its profile directories from the environment, which the
+            // hermetic launch leaves empty. Point them at the scratch home the server writes to.
+            let home = scratch.root().join(PKL_LSP_HOME_REL);
+            for name in ["USERPROFILE", "APPDATA", "LOCALAPPDATA"] {
+                env.retain(|(key, _)| !key.to_string_lossy().eq_ignore_ascii_case(name));
+                env.push((OsString::from(name), home.clone().into_os_string()));
+            }
+            if let Some(root) = std::env::var_os("SystemRoot") {
+                env.retain(|(key, _)| !key.to_string_lossy().eq_ignore_ascii_case("PATH"));
+                env.push((
+                    OsString::from("PATH"),
+                    Path::new(&root).join("System32").into_os_string(),
+                ));
             }
         }
         if tool_id == "zanuda" {
