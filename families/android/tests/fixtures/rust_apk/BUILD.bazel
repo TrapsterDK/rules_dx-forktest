@@ -37,7 +37,7 @@ cc_library(
         "-landroid",
         "-llog",
     ],
-    tags = ["manual"],
+    target_compatible_with = ["@platforms//os:linux", "@platforms//cpu:x86_64"],
     deps = [":app_rust"],
     alwayslink = True,
 )
@@ -120,7 +120,7 @@ android_apk_set(
     name = "app_apk_set",
     aab = ":app_apk_aab_file",
     device_spec = ":device_x86_64.json",
-    tags = ["manual"],
+    target_compatible_with = ["@platforms//os:linux", "@platforms//cpu:x86_64"],
 )
 
 android_adb_install(
@@ -201,7 +201,7 @@ android_check(
 android_check(
     name = "check_app_unsigned_test",
     package = ":app_apk_unsigned_file",
-    tags = ["manual"],
+    target_compatible_with = ["@platforms//os:linux", "@platforms//cpu:x86_64"],
 )
 
 sh_test(
@@ -251,7 +251,7 @@ android_check(
         "x86_64",
     ],
     resources = ["string/app_name"],
-    tags = ["manual"],
+    target_compatible_with = ["@platforms//os:linux", "@platforms//cpu:x86_64"],
 )
 
 # rules_android 0.8.0 prefers its Starlark android_platforms flag over the native option.
@@ -260,7 +260,6 @@ starlark_platforms(
     name = "app_apk_aab_file_x86_64_flag",
     src = ":app_apk_aab_file",
     platforms = ["//platforms:x86_64"],
-    tags = ["manual"],
 )
 
 android_check(
@@ -270,7 +269,7 @@ android_check(
         "arm64-v8a",
         "x86_64",
     ],
-    tags = ["manual"],
+    target_compatible_with = ["@platforms//os:linux", "@platforms//cpu:x86_64"],
 )
 
 sh_test(
@@ -289,7 +288,7 @@ sh_test(
         "//packaging:bundletool",
         "//packaging:check_package.sh",
     ],
-    tags = ["manual"],
+    target_compatible_with = ["@platforms//os:linux", "@platforms//cpu:x86_64"],
 )
 
 sh_test(
@@ -308,7 +307,7 @@ sh_test(
         "//packaging:bundletool",
         "//packaging:check_package.sh",
     ],
-    tags = ["manual"],
+    target_compatible_with = ["@platforms//os:linux", "@platforms//cpu:x86_64"],
 )
 
 sh_test(
@@ -330,7 +329,7 @@ sh_test(
         "//packaging:bundletool",
         "@android_ndk_toolchain//:llvm_readelf",
     ],
-    tags = ["manual"],
+    target_compatible_with = ["@platforms//os:linux", "@platforms//cpu:x86_64"],
 )
 
 sh_test(
@@ -352,7 +351,7 @@ sh_test(
         "//packaging:bundletool",
         "@android_ndk_toolchain//:llvm_readelf",
     ],
-    tags = ["manual"],
+    target_compatible_with = ["@platforms//os:linux", "@platforms//cpu:x86_64"],
 )
 
 sh_test(
@@ -398,7 +397,7 @@ sh_test(
         "@dx_android_sdk//:zipalign",
         "@rules_java//toolchains:current_java_runtime",
     ],
-    tags = ["manual"],
+    target_compatible_with = ["@platforms//os:linux", "@platforms//cpu:x86_64"],
     toolchains = ["@rules_java//toolchains:current_java_runtime"],
 )
 
@@ -473,7 +472,7 @@ sh_test(
         "//packaging:bundletool",
         "@rules_java//toolchains:current_java_runtime",
     ],
-    tags = ["manual"],
+    target_compatible_with = ["@platforms//os:linux", "@platforms//cpu:x86_64"],
     toolchains = ["@rules_java//toolchains:current_java_runtime"],
 )
 
