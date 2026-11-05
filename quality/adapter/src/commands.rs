@@ -83,6 +83,9 @@ const PERIPHERY_ARGS: &[&str] = &[
     "--skip-build",
     "--format",
     "json",
+    "--disable-update-check",
+    "--quiet",
+    "--retain-public",
     "--index-store-path",
 ];
 const FLAKE8_ARGS: &[&str] = &[
