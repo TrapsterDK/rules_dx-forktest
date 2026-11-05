@@ -2352,6 +2352,21 @@ fn file_family_lint_checks_are_check_only() {
         argv_strings(&keep_sorted_fix(Path::new(BIN), &[txt])),
         vec![BIN, "--mode", "fix", "/scratch/notes.txt"]
     );
+    assert_eq!(
+        argv_strings(&typos_check(Path::new(BIN), &[txt])),
+        vec![BIN, "--format", "json", "--", "/scratch/notes.txt"]
+    );
+    assert_eq!(
+        argv_strings(&typos_fix(Path::new(BIN), &[txt])),
+        vec![
+            BIN,
+            "--write-changes",
+            "--format",
+            "silent",
+            "--",
+            "/scratch/notes.txt"
+        ]
+    );
 }
 
 #[test]
@@ -2591,6 +2606,7 @@ fn plan_batches_honours_launcher_budget() {
 fn file_independent_tools_batch() {
     for tool in [
         "keep_sorted",
+        "typos",
         "notebook_outputs",
         "ruff",
         "flake8",
