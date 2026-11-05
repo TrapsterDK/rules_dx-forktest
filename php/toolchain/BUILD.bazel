@@ -8,6 +8,7 @@ package(default_visibility = ["//visibility:public"])
 
 exports_files([
     "metadata_tests.bzl",
+    "pcov.BUILD",
     "php.bzl",
     "pins.bzl",
     "repos.bzl",
