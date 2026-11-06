@@ -43,13 +43,13 @@ pub const DEVCONTAINER_JSON: &str = concat!(
     "    \"source=dx-bazel-cache,target=/home/vscode/.cache/bazel,type=volume\"\n",
     "  ],\n",
     "  \"onCreateCommand\": \"sudo chown -R vscode:vscode /home/vscode/.cache\",\n",
-    "  \"postCreateCommand\": \"tools/dx env --apply\"\n",
+    "  \"postCreateCommand\": \"tools/dx sync\"\n",
     "}\n",
 );
 
 pub const ENVRC_CONTENT: &str = concat!(
     "# Loads the managed bin through the pinned dx.\n",
-    "dx_env_lines=$(tools/dx env --shell=direnv) || return 1\n",
+    "dx_env_lines=$(tools/dx sync --shell=direnv) || return 1\n",
     "eval \"$dx_env_lines\"\n",
 );
 
@@ -930,7 +930,7 @@ mod tests {
             .find(|f| f.path == ".envrc")
             .expect("envrc scaffold");
         assert!(envrc.content.ends_with(super::ENVRC_CONTENT));
-        assert!(envrc.content.contains("tools/dx env --shell=direnv"));
+        assert!(envrc.content.contains("tools/dx sync --shell=direnv"));
         assert!(!envrc.content.contains(".dx"));
     }
 
@@ -972,7 +972,7 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn envrc_fails_when_the_pinned_dx_fails() {
-        let (status, path) = run_envrc("echo 'dx env: missing .dx/local/bin' >&2\nexit 1");
+        let (status, path) = run_envrc("echo 'dx sync: missing .dx/local/bin' >&2\nexit 1");
         assert!(!status.success());
         assert_eq!(path, "/usr/bin:/bin");
     }
@@ -1004,7 +1004,7 @@ mod tests {
                 .expect("cache mount")
                 .contains("type=volume")
         );
-        assert_eq!(parsed["postCreateCommand"], "tools/dx env --apply");
+        assert_eq!(parsed["postCreateCommand"], "tools/dx sync");
     }
 
     #[test]
