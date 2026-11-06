@@ -104,6 +104,8 @@ pub struct HelmChartConfig {
 pub struct NpmConfig {
     pub feed_rloc: String,
     pub tarball_rloc: String,
+    #[serde(default)]
+    pub api_compat: String,
 }
 
 /// Pins one NuGet push: the nupkg, its expected id and version, and the feed.
@@ -395,7 +397,9 @@ pub fn run_deploy_config(config: &DeployConfig, argv: &[String]) -> i32 {
             },
             argv,
         ),
-        DeployConfig::Npm(npm) => crate::npm_deploy_main(argv, &npm.feed_rloc, &npm.tarball_rloc),
+        DeployConfig::Npm(npm) => {
+            crate::npm_deploy_main_checked(argv, &npm.feed_rloc, &npm.tarball_rloc, &npm.api_compat)
+        }
         DeployConfig::Nuget(nuget) => crate::nuget_main(
             &nuget.nupkg_rloc,
             &nuget.deploy_name,
@@ -654,6 +658,7 @@ mod tests {
             Ok(DeployConfig::Npm(NpmConfig {
                 feed_rloc: "f".to_owned(),
                 tarball_rloc: "t".to_owned(),
+                api_compat: String::new(),
             }))
         );
         assert_eq!(
@@ -944,6 +949,7 @@ mod tests {
             DeployConfig::Npm(NpmConfig {
                 feed_rloc: "a".to_owned(),
                 tarball_rloc: "b".to_owned(),
+                api_compat: String::new(),
             }),
             DeployConfig::Nuget(NugetConfig {
                 nupkg_rloc: "a".to_owned(),
