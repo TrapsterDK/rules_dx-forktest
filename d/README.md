@@ -114,8 +114,8 @@ A package without a matching entry fails the fetch and prints the entry to commi
 | Linux x86_64 | yes | yes |
 | Linux arm64 | yes | yes |
 | macOS arm64 | yes | yes |
-| Windows x86_64 | yes | no |
-| Windows arm64 | via emulation | no |
+| Windows x86_64 | yes | yes |
+| Windows arm64 | via emulation | yes |
 
 The Windows archives are `.7z` files that use BCJ2, which Bazel cannot unpack, so they are
 extracted with the pinned 7-Zip in `//libs/starlark:seven_zip.bzl`. LDC has no native Windows
@@ -123,4 +123,6 @@ arm64 compiler: that cell runs the x64 LDC under emulation with the arm64 runtim
 LDC addon package, and compiles with `-mtriple=aarch64-windows-msvc`.
 
 The hello D tests (`greet_test`, `hello_output_test`) pass on Windows x86_64 (evidence run
-42057198949) and Windows arm64 (evidence run 42083243205).
+42057198949) and Windows arm64 (evidence run 42083243205). The hello and d-app tests
+(`app_output_test`, `base_test`, `cli_test`) pass on both Windows hosts in evidence run
+42302173656.
