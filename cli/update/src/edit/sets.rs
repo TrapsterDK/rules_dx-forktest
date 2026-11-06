@@ -13,10 +13,11 @@ pub enum UpdateSet {
     NuGet,
     Pub,
     Ruby,
+    SwiftPm,
 }
 
 impl UpdateSet {
-    pub const ALL: [UpdateSet; 13] = [
+    pub const ALL: [UpdateSet; 14] = [
         UpdateSet::Bazel,
         UpdateSet::Cabal,
         UpdateSet::Cargo,
@@ -30,6 +31,7 @@ impl UpdateSet {
         UpdateSet::NuGet,
         UpdateSet::Pub,
         UpdateSet::Ruby,
+        UpdateSet::SwiftPm,
     ];
 
     pub const BUILTIN: [UpdateSet; 3] = [
@@ -57,6 +59,7 @@ impl UpdateSet {
             UpdateSet::NuGet => "nuget",
             UpdateSet::Pub => "pub",
             UpdateSet::Ruby => "ruby",
+            UpdateSet::SwiftPm => "swiftpm",
         }
     }
 
@@ -75,6 +78,7 @@ impl UpdateSet {
             "nuget" => Some(UpdateSet::NuGet),
             "pub" => Some(UpdateSet::Pub),
             "ruby" => Some(UpdateSet::Ruby),
+            "swiftpm" => Some(UpdateSet::SwiftPm),
             _ => None,
         }
     }
@@ -112,7 +116,7 @@ mod tests {
             assert!(seen.insert(set.name()), "duplicate set name");
             assert_eq!(UpdateSet::parse(set.name()), Some(set));
         }
-        assert_eq!(seen.len(), 13);
+        assert_eq!(seen.len(), 14);
         assert_eq!(UpdateSet::parse("Cargo"), None);
         assert_eq!(UpdateSet::parse("cargo-lock"), None);
         assert_eq!(UpdateSet::parse(""), None);
@@ -151,7 +155,8 @@ mod tests {
                 "npm",
                 "nuget",
                 "pub",
-                "ruby"
+                "ruby",
+                "swiftpm"
             ]
         );
         let mut sorted = names.clone();
