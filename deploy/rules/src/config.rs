@@ -190,6 +190,12 @@ pub struct MavenConfig {
     pub artifact: String,
     pub version: String,
     pub repository_url: String,
+    #[serde(default)]
+    pub api_compat: String,
+    #[serde(default)]
+    pub japicmp_rloc: String,
+    #[serde(default)]
+    pub java_rloc: String,
 }
 
 /// Pins one OCI push: the image and its destination.
@@ -440,6 +446,9 @@ pub fn run_deploy_config(config: &DeployConfig, argv: &[String]) -> i32 {
                 artifact: &maven.artifact,
                 version: &maven.version,
                 repository_url: &maven.repository_url,
+                api_compat: &maven.api_compat,
+                japicmp_rloc: &maven.japicmp_rloc,
+                java_rloc: &maven.java_rloc,
             },
             argv,
         ),
@@ -681,6 +690,9 @@ mod tests {
                 artifact: "a".to_owned(),
                 version: "1".to_owned(),
                 repository_url: "https://x".to_owned(),
+                api_compat: String::new(),
+                japicmp_rloc: String::new(),
+                java_rloc: String::new(),
             }))
         );
         assert_eq!(
@@ -957,6 +969,9 @@ mod tests {
                 artifact: "a".to_owned(),
                 version: "1.0.0".to_owned(),
                 repository_url: "https://maven.invalid".to_owned(),
+                api_compat: String::new(),
+                japicmp_rloc: String::new(),
+                java_rloc: String::new(),
             }),
             DeployConfig::Oci(OciConfig {
                 image_rloc: "a".to_owned(),
