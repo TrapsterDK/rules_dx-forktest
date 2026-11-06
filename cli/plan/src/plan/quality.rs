@@ -134,6 +134,16 @@ pub(crate) fn workflow_scope_labels(resolved: &ResolvedScope) -> (Scope, Vec<Str
     }
 }
 
+/// Like [`workflow_scope_labels`], with `-pattern` terms for the `dx.toml` excludes.
+pub(crate) fn workflow_bazel_labels(resolved: &ResolvedScope) -> (Scope, Vec<String>) {
+    let (scope, labels) = workflow_scope_labels(resolved);
+    if resolved.targets.is_empty() {
+        (scope, labels)
+    } else {
+        (scope, crate::resolve::exclude::bazel_labels(resolved))
+    }
+}
+
 pub fn plan_build(
     command: Command,
     resolved: &ResolvedScope,
@@ -276,7 +286,7 @@ fn shaped_plan(
     if logged {
         protected.extend(exec_log_guards());
     }
-    let (scope, labels) = workflow_scope_labels(resolved);
+    let (scope, labels) = workflow_bazel_labels(resolved);
     let mut options = vec![SKIP_INCOMPATIBLE_FLAG.to_owned()];
     options.extend(bazel_options.iter().cloned());
     let argv = bazel_argv(
@@ -621,6 +631,8 @@ mod tests {
                 Scope::Labels(strings(targets))
             },
             targets: strings(targets),
+            excluded: Vec::new(),
+            kept: Vec::new(),
         }
     }
 
@@ -936,6 +948,8 @@ mod tests {
         let scope = ResolvedScope {
             scope: Scope::ResolvedOwners(strings(&["//a:a", "//b:b"])),
             targets: strings(&["//a:a", "//b:b"]),
+            excluded: Vec::new(),
+            kept: Vec::new(),
         };
         let plan = plan_build(Command::Lint, &scope, &[], "/tmp/bep.json", &[]).expect("plan");
         let argv: Vec<&str> = plan.argv.iter().map(String::as_str).collect();
