@@ -10,14 +10,15 @@ pub mod js;
 pub mod julia;
 pub mod jvm;
 pub mod lua;
+pub mod ocaml;
 pub mod perl;
 pub mod php;
 pub mod powershell;
 pub mod python;
 pub mod ruby;
 pub mod rust;
-pub mod zig;
 pub mod swift;
+pub mod zig;
 
 use std::collections::BTreeMap;
 use std::path::Path;
