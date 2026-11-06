@@ -1,6 +1,7 @@
 """Analysis test for the C/C++ tool identity of cargo build script actions."""
 
 load("@bazel_skylib//lib:unittest.bzl", "analysistest", "asserts")
+load("//rust/rules:msvc_crt.bzl", "MSVC_CRT_FROM_RUST", "MSVC_STATIC_CRT")
 
 def _relative(value):
     if value.startswith("${pwd}/"):
@@ -184,7 +185,7 @@ def build_script_compiler_tests(name, target):
 
 cross_build_script_tool_inputs_test = analysistest.make(
     _tool_inputs_test_impl,
-    config_settings = {"//command_line_option:platforms": str(Label("//appimage/platforms:linux_arm64"))},
+    config_settings = {"//command_line_option:platforms": str(Label("//appimage/platforms:linux_arm64")), _COMPILER: "llvm"},
 )
 
 def _cross_gcc_impl(ctx):
@@ -328,7 +329,13 @@ def _link_windows_impl(ctx):
 _link_gcc_test = analysistest.make(_link_gcc_impl, config_settings = {_COMPILER: "gcc"}, attrs = _GCC_ATTRS)
 _link_llvm_test = analysistest.make(_link_llvm_impl, config_settings = {_COMPILER: "llvm"})
 
-_link_windows_test = analysistest.make(_link_windows_impl, config_settings = {_COMPILER: "llvm", _LINKER_PREFERENCE: "rust"})
+# The forwarder's static CRT settings, so the crate under test and the upstream share one build script config.
+_link_windows_test = analysistest.make(_link_windows_impl, config_settings = {
+    _COMPILER: "llvm",
+    _LINKER_PREFERENCE: "rust",
+    "//command_line_option:features": MSVC_STATIC_CRT,
+    str(Label(MSVC_CRT_FROM_RUST)): True,
+})
 
 def rust_link_windows_test(name, target):
     """Asserts the Rust link step uses rust-lld and not clang-cl on Windows x64.
@@ -378,6 +385,10 @@ _CRT_CONFIG = {
     _COMPILER: "msvc",
     _EXTRA_RUSTC_FLAG: ["-Ctarget-feature=+crt-static"],
 }
+_CRT_CONFIG_LLVM = {
+    _COMPILER: "llvm",
+    _EXTRA_RUSTC_FLAG: ["-Ctarget-feature=+crt-static"],
+}
 
 def _crt_ok_impl(ctx):
     env = analysistest.begin(ctx)
@@ -392,9 +403,11 @@ def _crt_bad_impl(ctx):
 _crt_ok_test = analysistest.make(_crt_ok_impl, config_settings = _CRT_CONFIG)
 _crt_target_flag_test = analysistest.make(_crt_ok_impl, config_settings = {_COMPILER: "msvc"})
 _crt_bad_test = analysistest.make(_crt_bad_impl, config_settings = _CRT_CONFIG, expect_failure = True)
+_crt_ok_llvm_test = analysistest.make(_crt_ok_impl, config_settings = _CRT_CONFIG_LLVM)
+_crt_bad_llvm_test = analysistest.make(_crt_bad_impl, config_settings = _CRT_CONFIG_LLVM, expect_failure = True)
 
 def rust_msvc_crt_tests(name, ok, bad, target_flag):
-    """Asserts +crt-static Rust accepts /MT C deps and rejects /MD ones on MSVC.
+    """Asserts +crt-static Rust accepts /MT C deps and rejects /MD ones under cl.exe and clang-cl.
 
     Args:
         name: Name of the test suite.
@@ -405,14 +418,23 @@ def rust_msvc_crt_tests(name, ok, bad, target_flag):
     ok_name = name + "_ok"
     bad_name = name + "_bad"
     target_flag_name = name + "_target_flag"
-    for test, rule, target in [(ok_name, _crt_ok_test, ok), (bad_name, _crt_bad_test, bad), (target_flag_name, _crt_target_flag_test, target_flag)]:
+    ok_llvm_name = name + "_ok_llvm"
+    bad_llvm_name = name + "_bad_llvm"
+    cases = [
+        (ok_name, _crt_ok_test, ok),
+        (bad_name, _crt_bad_test, bad),
+        (target_flag_name, _crt_target_flag_test, target_flag),
+        (ok_llvm_name, _crt_ok_llvm_test, ok),
+        (bad_llvm_name, _crt_bad_llvm_test, bad),
+    ]
+    for test, rule, target in cases:
         rule(
             name = test,
             size = "small",
             target_compatible_with = ["@platforms//os:windows", "@platforms//cpu:x86_64"],
             target_under_test = target,
         )
-    native.test_suite(name = name, tests = [ok_name, bad_name, target_flag_name])
+    native.test_suite(name = name, tests = [ok_name, bad_name, target_flag_name, ok_llvm_name, bad_llvm_name])
 
 def rust_msvc_crt_library_tests(name, shared, static, cc_consumer):
     """Asserts +crt-static Rust shared and static libraries reject /MD C deps on MSVC.
