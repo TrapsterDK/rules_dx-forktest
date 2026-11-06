@@ -172,11 +172,41 @@ const UNFORMATTED: &str = "import QtQml\nQtObject {   property int a:1\n}\n";
 
 const FORMATTED: &str = "import QtQml\n\nQtObject {\n    property int a: 1\n}\n";
 
+#[cfg(not(windows))]
+const UNQUALIFIED_EXIT: i32 = 255;
+
+#[cfg(windows)]
+const UNQUALIFIED_EXIT: i32 = -1;
+
 const UNQUALIFIED: &str = "import QtQml\n\nQtObject {\n    property int a: b\n}\n";
 
 fn tool(variable: &str) -> PathBuf {
     let rel = std::env::var(variable).unwrap_or_else(|_| panic!("{variable} must name a tool"));
     dx_testing::resolve_runfiles(&rel)
+}
+
+/// Windows searches the executable's directory before System32 and PATH, so the pinned
+/// MSVC runtime is copied beside a private copy of the executable.
+#[cfg(windows)]
+fn runnable(variable: &str) -> PathBuf {
+    let exe = tool(variable);
+    let dir = dx_testing::mkscratch("qt-exe").expect("scratch directory");
+    let copy = dir.join(exe.file_name().expect("executable name"));
+    std::fs::copy(&exe, &copy).expect("copy executable");
+    let paths = std::env::var("DX_QT_VCRUNTIME").expect("DX_QT_VCRUNTIME must name files");
+    for path in paths
+        .split_whitespace()
+        .filter(|path| path.ends_with(".dll"))
+    {
+        let source = dx_testing::resolve_runfiles(path);
+        std::fs::copy(&source, dir.join(file_name(path))).expect("copy MSVC runtime");
+    }
+    copy
+}
+
+#[cfg(not(windows))]
+fn runnable(variable: &str) -> PathBuf {
+    tool(variable)
 }
 
 fn scratch_file(name: &str, text: &str) -> PathBuf {
@@ -282,7 +312,7 @@ fn spdx_package(document: &Value, name: &str) -> Value {
 
 #[test]
 fn probe_evaluates_qml_against_only_pinned_libraries() {
-    let probe = tool("DX_QT_PROBE");
+    let probe = runnable("DX_QT_PROBE");
     let path = runtime_path();
     let mut envs = vec![("PATH", path.as_str())];
     envs.extend(&HOST_ROUTES[1..]);
@@ -356,7 +386,7 @@ fn directory_of(variable: &str, name: &str) -> String {
     dir.to_owned()
 }
 
-fn run_gui(platform: &str) -> dx_testing::Run {
+fn run_gui(platform: &str) -> std::io::Result<dx_testing::Run> {
     let fonts = std::env::var("DX_QT_FONTS")
         .unwrap_or_default()
         .split_whitespace()
@@ -381,12 +411,18 @@ fn run_gui(platform: &str) -> dx_testing::Run {
         envs.push(("FONTCONFIG_PATH", fonts));
     }
     envs.extend(&HOST_ROUTES[2..]);
-    dx_testing::run(&tool("DX_QT_GUI"), &[], &envs).expect("run gui check")
+    // Without these Qt reports a fatal error in a message box that waits for a click.
+    #[cfg(windows)]
+    envs.extend([
+        ("QT_ASSUME_STDERR_HAS_CONSOLE", "1"),
+        ("QT_FORCE_STDERR_LOGGING", "1"),
+    ]);
+    dx_testing::run(&runnable("DX_QT_GUI"), &[], &envs)
 }
 
 #[test]
 fn gui_renders_offscreen_against_only_pinned_libraries() {
-    let run = run_gui("offscreen");
+    let run = run_gui("offscreen").expect("run gui check");
     assert!(
         run.status.success(),
         "gui check failed:\n{}",
@@ -406,7 +442,20 @@ fn gui_renders_offscreen_against_only_pinned_libraries() {
 
 #[test]
 fn gui_refuses_a_platform_plugin_it_does_not_pin() {
-    let run = run_gui("xcb");
+    let run = match run_gui("xcb") {
+        Ok(run) => run,
+        // Windows leaves the aborted process waiting after it reports the error.
+        Err(error) if cfg!(windows) && error.kind() == std::io::ErrorKind::TimedOut => {
+            assert!(
+                error
+                    .to_string()
+                    .contains("Could not find the Qt platform plugin \"xcb\""),
+                "{error}"
+            );
+            return;
+        }
+        Err(error) => panic!("run gui check: {error}"),
+    };
     assert!(!run.status.success(), "{}", run.combined());
     assert!(
         run.stderr
@@ -435,7 +484,10 @@ fn tools_report_the_pinned_version() {
     ] {
         let run = dx_testing::run(&tool(variable), &["--version"], &[]).expect("run tool");
         assert!(run.status.success(), "{name} failed:\n{}", run.combined());
-        assert_eq!(run.stdout, format!("{name} {VERSION}\n"));
+        assert_eq!(
+            run.stdout.replace("\r\n", "\n"),
+            format!("{name} {VERSION}\n")
+        );
     }
 }
 
@@ -475,7 +527,7 @@ fn qmlformat_rewrites_to_the_qt_layout() {
         "qmlformat failed:\n{}",
         run.combined()
     );
-    assert_eq!(run.stdout, FORMATTED);
+    assert_eq!(run.stdout.replace("\r\n", "\n"), FORMATTED);
 }
 
 #[test]
@@ -493,7 +545,12 @@ fn qmllint_reports_clean_files_as_json() {
 fn qmllint_fails_unqualified_access_with_a_located_warning() {
     let file = scratch_file("dirty.qml", UNQUALIFIED);
     let run = lint(&file, &[]);
-    assert_eq!(run.status.code(), Some(255), "{}", run.combined());
+    assert_eq!(
+        run.status.code(),
+        Some(UNQUALIFIED_EXIT),
+        "{}",
+        run.combined()
+    );
     let report: Value = dx_testing::serde_json::from_str(&run.stdout).expect("JSON report");
     let warning = &report["files"][0]["warnings"][0];
     assert_eq!(report["files"][0]["success"], false);
@@ -522,9 +579,14 @@ fn tools_ignore_host_routes_and_load_pinned_plugins() {
     );
 }
 
-#[cfg(any(target_os = "macos", windows))]
+#[cfg(target_os = "macos")]
 fn expected_licenses() -> BTreeSet<String> {
     BTreeSet::from(["qt".to_owned()])
+}
+
+#[cfg(windows)]
+fn expected_licenses() -> BTreeSet<String> {
+    BTreeSet::from(["msvc-redistributable".to_owned(), "qt".to_owned()])
 }
 
 #[cfg(target_os = "linux")]
@@ -632,6 +694,25 @@ fn run_fresh_copy(copy: &Path) -> std::process::Output {
     panic!("{copy:?} stayed busy: a concurrent fork kept its write handle open");
 }
 
+#[cfg(not(windows))]
+fn assert_launcher_refusal(code: Option<i32>, stderr: &str) {
+    assert_eq!(code, Some(127));
+    assert!(
+        stderr.starts_with("rules_dx: cannot find the Qt runfiles of ")
+            && stderr.ends_with(" for bin/qmllint\n"),
+        "{stderr}"
+    );
+}
+
+#[cfg(windows)]
+fn assert_launcher_refusal(code: Option<i32>, stderr: &str) {
+    assert_eq!(code, Some(1), "{stderr}");
+    assert!(
+        stderr.starts_with("exec_launcher: no runfiles beside "),
+        "{stderr}"
+    );
+}
+
 #[test]
 fn launcher_fails_explicitly_without_the_pinned_runfiles() {
     let launcher = std::fs::canonicalize(tool("DX_QMLLINT")).expect("launcher");
@@ -640,14 +721,9 @@ fn launcher_fails_explicitly_without_the_pinned_runfiles() {
         .join("qmllint");
     std::fs::copy(&launcher, &copy).expect("copy launcher");
     let output = run_fresh_copy(&copy);
-    assert_eq!(output.status.code(), Some(127));
     assert!(output.stdout.is_empty());
     let stderr = String::from_utf8_lossy(&output.stderr);
-    assert!(
-        stderr.starts_with("rules_dx: cannot find the Qt runfiles of ")
-            && stderr.ends_with(" for bin/qmllint\n"),
-        "{stderr}"
-    );
+    assert_launcher_refusal(output.status.code(), &stderr);
 }
 
 #[cfg(target_os = "linux")]
