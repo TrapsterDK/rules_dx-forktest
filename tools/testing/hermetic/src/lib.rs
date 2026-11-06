@@ -186,12 +186,17 @@ pub const SHIM_NAME: &str = if cfg!(windows) {
 };
 
 /// The PATH of every action: system directories only, plus the shim directory on Windows.
+/// Bazel starts `cmd_ps` genrules as a bare `powershell.exe`, so its directory is listed too.
 pub fn action_path(system_root: Option<&str>, shim_dir: Option<&Path>) -> String {
     if !cfg!(windows) {
         return ACTION_PATH.to_owned();
     }
     let root = system_root.unwrap_or(r"C:\Windows");
-    let mut dirs = vec![format!(r"{root}\System32"), root.to_owned()];
+    let mut dirs = vec![
+        format!(r"{root}\System32"),
+        root.to_owned(),
+        format!(r"{root}\System32\WindowsPowerShell\v1.0"),
+    ];
     dirs.extend(shim_dir.map(|dir| dir.to_string_lossy().into_owned()));
     dirs.join(";")
 }
@@ -279,6 +284,9 @@ fn windows_host_dirs() -> Vec<PathBuf> {
 
 pub const AMBIENT_MARKER: &str = "dx-hermetic: undeclared ambient tool";
 
+/// Bazel's strict action PATH on Windows is fixed, so the shim never runs there and PowerShell reports the tool missing.
+pub const WINDOWS_AMBIENT_MARKER: &str = "CommandNotFoundException";
+
 pub const NETWORK_MARKER: &str = "Network is unreachable";
 
 pub const HOME_MARKER: &str = "dx-hermetic: home config absent";
@@ -288,7 +296,7 @@ pub fn markers(os: &str) -> (&'static str, &'static str, &'static str) {
     if os == "macos" {
         (MACOS_DENIED_MARKER, MACOS_DENIED_MARKER, HOME_MARKER)
     } else if os == "windows" {
-        (AMBIENT_MARKER, WINDOWS_DENIED_MARKER, HOME_MARKER)
+        (WINDOWS_AMBIENT_MARKER, WINDOWS_DENIED_MARKER, HOME_MARKER)
     } else {
         (AMBIENT_MARKER, NETWORK_MARKER, HOME_MARKER)
     }
@@ -1086,8 +1094,10 @@ impl Session {
         argv.extend(self.platform_flag());
         argv.extend(self.shell_flag());
         argv.extend(probe.extra.iter().cloned());
-        argv.push("--".to_owned());
-        argv.extend(probe.targets.iter().cloned());
+        if !probe.targets.is_empty() {
+            argv.push("--".to_owned());
+            argv.extend(probe.targets.iter().cloned());
+        }
         argv
     }
 
@@ -2370,6 +2380,9 @@ fn run_all(
         extra: vec!["--test_output=errors".to_owned()],
         expect: Expect::Pass,
     })?;
+    // From a file: on Windows the run account's command line is capped at 1024 characters.
+    let query = clean_home.join("artifacts.query");
+    write(&query, &built_query(&patterns))?;
     let listed = session.run(Probe {
         name: "artifacts".to_owned(),
         net: Net::Denied,
@@ -2377,8 +2390,11 @@ fn run_all(
         output_root: &cold,
         repos: &repos,
         command: "cquery",
-        targets: vec![built_query(&patterns)],
-        extra: vec!["--output=files".to_owned()],
+        targets: Vec::new(),
+        extra: vec![
+            "--output=files".to_owned(),
+            format!("--query_file={}", query.display()),
+        ],
         expect: Expect::Pass,
     })?;
     let built = artifacts(&session.workspace, &listed.stdout)?;

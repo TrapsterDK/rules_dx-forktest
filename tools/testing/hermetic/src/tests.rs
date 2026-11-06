@@ -465,6 +465,7 @@ fn verify_rejects_evidence_for_other_languages() {
     );
 }
 
+#[cfg(unix)]
 #[test]
 fn ambient_tools_include_versioned_variants() {
     let dir = tempfile::tempdir().unwrap();
@@ -687,7 +688,7 @@ fn the_consumer_materializes_from_dx_init() {
     }
     assert_eq!(
         std::fs::read_to_string(workspace.join(LEAKS_PACKAGE).join("BUILD.bazel")).unwrap(),
-        leaks_build("cc")
+        leaks_build_host("cc")
     );
 }
 
@@ -798,6 +799,7 @@ fn plan_with_keep_covering_every_sdk_masks_none() {
     assert!(isolation.home_dirs.is_empty() && isolation.home_files.is_empty());
 }
 
+#[cfg(unix)]
 #[test]
 fn host_paths_detect_uses_the_host_constants() {
     let host = HostPaths::detect();
@@ -901,6 +903,7 @@ fn hermetic_test_builds_generate_check_only_with_coverage_targets() {
     assert_eq!(argv.last(), Some(&label));
 }
 
+#[cfg(unix)]
 #[test]
 fn each_output_root_has_its_own_dx_disk_cache() {
     let session = fixture_session();
@@ -999,6 +1002,7 @@ fn startup_flags_pin_the_output_base_only_on_windows() {
     );
 }
 
+#[cfg(unix)]
 #[test]
 fn bazel_argv_pins_startup_and_build_flags_before_the_targets() {
     let argv = fixture_session().bazel_argv(&fixture_probe());
@@ -1734,7 +1738,10 @@ fn markers_follow_the_host_os() {
             HOME_MARKER
         )
     );
-    assert_eq!(markers("windows").1, WINDOWS_DENIED_MARKER);
+    assert_eq!(
+        markers("windows"),
+        (WINDOWS_AMBIENT_MARKER, WINDOWS_DENIED_MARKER, HOME_MARKER)
+    );
     assert_eq!(
         probe_expectation("network", "macos").1,
         "Operation not permitted"
@@ -1862,7 +1869,10 @@ fn windows_leak_package_uses_powershell_and_keeps_the_markers() {
 fn action_path_is_system_only() {
     if cfg!(windows) {
         let path = action_path(Some(r"D:\Win"), Some(Path::new(r"C:\q\shims")));
-        assert_eq!(path, r"D:\Win\System32;D:\Win;C:\q\shims");
+        assert_eq!(
+            path,
+            r"D:\Win\System32;D:\Win;D:\Win\System32\WindowsPowerShell\v1.0;C:\q\shims"
+        );
     } else {
         assert_eq!(action_path(None, None), ACTION_PATH);
     }
