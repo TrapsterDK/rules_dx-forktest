@@ -40,6 +40,31 @@ exec $REAL_AS "${{args[@]}}"
 ASM
 chmod +x "$SCRATCH/bin/as"
 export CONDA_OCAML_AS="$SCRATCH/bin/as"
+# ocamlopt calls the archiver as ar does ("rc out objects"); the macOS toolchain archives with libtool, which wants "-static -o out objects".
+case "$CONDA_OCAML_AR" in
+  *libtool*)
+    export REAL_AR="$CONDA_OCAML_AR"
+    cat > "$SCRATCH/bin/ar" <<'ARW'
+#!/bin/bash
+shift
+out="$1"
+shift
+exec $REAL_AR -static -o "$out" "$@"
+ARW
+    chmod +x "$SCRATCH/bin/ar"
+    export CONDA_OCAML_AR="$SCRATCH/bin/ar"
+    ;;
+esac
+# The conda zstd dylib is loaded through an rpath the executables lack, so link the static archive when the tree has one.
+if [ "$(uname -s)" = Darwin ] && [ -f "${{PATH%%:*}}/../lib/libzstd.a" ]; then
+  mkdir -p "$SCRATCH/static"
+  ln -s "$(cd "${{PATH%%:*}}/../lib" && pwd)/libzstd.a" "$SCRATCH/static/libzstd.a"
+  export CONDA_OCAML_MKEXE="$CONDA_OCAML_MKEXE -L$SCRATCH/static"
+fi
+# Fallback for dylib links: executables built and run inside one action find libzstd through the tree's lib directory.
+if [ "$(uname -s)" = Darwin ]; then
+  export CONDA_OCAML_MKEXE="$CONDA_OCAML_MKEXE -Wl,-rpath,$(cd "${{PATH%%:*}}/../lib" && pwd)"
+fi
 export DUNE_CACHE=disabled
 export HOME="$SCRATCH/home" XDG_CACHE_HOME="$SCRATCH/home/.cache" XDG_CONFIG_HOME="$SCRATCH/home/.config" XDG_DATA_HOME="$SCRATCH/home/.local"
 export TMPDIR="$SCRATCH/tmp"
@@ -116,14 +141,23 @@ def _env(ctx, tree):
     )
     tool = lambda action: _abs(cc_common.get_tool_for_action(feature_configuration = features, action_name = action))
     compiler = _find(tree, "/bin/ocamlopt.opt")
-    return {
+    env = {
+        key: _abs(value) if "/" in value and not value.startswith("-") else value
+        for key, value in cc_common.get_environment_variables(
+            feature_configuration = features,
+            action_name = ACTION_NAMES.cpp_link_executable,
+            variables = cc_common.empty_variables(),
+        ).items()
+    }
+    env.update({
         "CONDA_OCAML_AR": tool(ACTION_NAMES.cpp_link_static_library),
         "CONDA_OCAML_AS": tool(ACTION_NAMES.assemble) + " -c",
         "CONDA_OCAML_CC": tool(ACTION_NAMES.c_compile),
         "CONDA_OCAML_MKDLL": tool(ACTION_NAMES.cpp_link_executable) + " -shared",
         "CONDA_OCAML_MKEXE": tool(ACTION_NAMES.cpp_link_executable),
         "PATH": _abs(compiler.dirname) + ":/usr/bin:/bin",
-    }, cc.all_files
+    })
+    return env, cc.all_files
 
 def _shell_env(env):
     return "\n".join(["export {}=\"{}\"".format(key, env[key]) for key in sorted(env)])
