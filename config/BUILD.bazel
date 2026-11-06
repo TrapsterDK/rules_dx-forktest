@@ -27,6 +27,11 @@ string_list_flag(
 )
 
 string_flag(
+    name = "buf_breaking_against",
+    build_setting_default = "",
+)
+
+string_flag(
     name = "spotbugs_effort",
     build_setting_default = "default",
     values = [
