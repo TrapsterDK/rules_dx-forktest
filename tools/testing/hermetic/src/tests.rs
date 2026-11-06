@@ -880,7 +880,62 @@ fn hermetic_test_builds_generate_check_only_with_coverage_targets() {
     assert_eq!(session.hermetic_test_targets(), ["//..."]);
     session.manifest.coverage = vec!["//lib:t".to_owned()];
     let label = format!("@{}//dx:generate_check", session.manifest.repo_name);
-    assert_eq!(session.hermetic_test_targets(), ["//...".to_owned(), label]);
+    assert_eq!(
+        session.hermetic_test_targets(),
+        ["//...".to_owned(), label.clone()]
+    );
+    let probe = Probe {
+        targets: session.hermetic_test_targets(),
+        ..fixture_probe()
+    };
+    let argv = session.bazel_tail(&probe);
+    for setting in dx_process::head_settings("r") {
+        assert!(argv.contains(&setting), "{setting} missing from {argv:?}");
+    }
+    assert_eq!(argv.last(), Some(&label));
+}
+
+#[test]
+fn each_output_root_has_its_own_dx_disk_cache() {
+    let session = fixture_session();
+    let cache = |root: &str, command: &'static str| {
+        let probe = Probe {
+            command,
+            output_root: Path::new(root),
+            ..fixture_probe()
+        };
+        session
+            .bazel_tail(&probe)
+            .into_iter()
+            .filter(|arg| arg.starts_with("--disk_cache="))
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(
+        cache("/q/warm", "coverage"),
+        ["--disk_cache=/q/warm_cache/dx/disk-cache"]
+    );
+    assert!(cache("/q/cold", "cquery").is_empty());
+}
+
+#[test]
+fn probes_carry_the_dx_settings_only_on_build_like_verbs() {
+    let session = fixture_session();
+    let settings = dx_process::head_settings("r");
+    for (command, carried) in [
+        ("cquery", true),
+        ("build", true),
+        ("query", false),
+        ("fetch", false),
+    ] {
+        let probe = Probe {
+            command,
+            ..fixture_probe()
+        };
+        let argv = session.bazel_tail(&probe);
+        for setting in &settings {
+            assert_eq!(argv.contains(setting), carried, "{command}: {argv:?}");
+        }
+    }
 }
 
 #[test]
@@ -942,17 +997,26 @@ fn startup_flags_pin_the_output_base_only_on_windows() {
 fn bazel_argv_pins_startup_and_build_flags_before_the_targets() {
     let argv = fixture_session().bazel_argv(&fixture_probe());
     assert_eq!(
-        argv[..5],
+        argv[..6],
         [
             "/usr/bin/env",
             "-i",
             "HOME=/q/home",
             "PATH=/usr/bin:/bin",
-            "BAZELISK_HOME=/q/bazelisk"
+            "BAZELISK_HOME=/q/bazelisk",
+            "XDG_CACHE_HOME=/q/cold_cache",
         ]
     );
+    let gc_size = format!(
+        "--experimental_disk_cache_gc_max_size={}",
+        dx_process::DISK_CACHE_GC_MAX_SIZE
+    );
+    let gc_age = format!(
+        "--experimental_disk_cache_gc_max_age={}",
+        dx_process::DISK_CACHE_GC_MAX_AGE
+    );
     assert_eq!(
-        argv[8..],
+        argv[9..],
         [
             "/q/consumer ws",
             "/q/bin/bazelisk",
@@ -966,12 +1030,17 @@ fn bazel_argv_pins_startup_and_build_flags_before_the_targets() {
             "--curses=no",
             "--incompatible_strict_action_env",
             "--sandbox_default_allow_network=false",
+            "--@r//config:clippy_output_diagnostics=true",
+            "--@r//config:rustc_output_diagnostics=true",
+            "--disk_cache=/q/cold_cache/dx/disk-cache",
+            &gc_size,
+            &gc_age,
             "--test_output=errors",
             "--",
             "//...",
         ]
     );
-    assert!(argv[7].contains("shutdown"), "{}", argv[7]);
+    assert!(argv[8].contains("shutdown"), "{}", argv[8]);
 }
 
 #[test]
