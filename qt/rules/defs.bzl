@@ -497,6 +497,7 @@ def _run_environment(ctx, gui):
         environment["QT_PLUGIN_PATH"] = _plugin_path(ctx.files.plugins)
     inherited = []
     if gui:
+        environment["QT_ASSUME_STDERR_HAS_CONSOLE"] = "1"
         if len([f for f in ctx.files.fonts if f.basename == "fonts.conf"]) > 0:
             environment["FONTCONFIG_PATH"] = _directory(ctx.files.fonts, "fonts.conf")
         environment["QT_QPA_PLATFORM_PLUGIN_PATH"] = _directory(ctx.files.platforms, "qoffscreen")
@@ -1095,10 +1096,12 @@ QT_CONSUMER_MIN_RUNTIME = select(
 
 # Linux cells whose Qt apps import system libraries that the OS supplies.
 _RUNTIME_CELLS = [cell for cell in _BUNDLE_CELLS if CELLS[cell].layout.os == "linux"]
+_WINDOWS_CELLS = [cell for cell in _BUNDLE_CELLS if CELLS[cell].layout.os == "windows"]
 
 # consumer_archive runtime of the qualified cell the build targets.
 QT_CONSUMER_RUNTIME = select(
     {_cell_setting(cell): [Label("//qt/rules:os_runtime_" + cell)] for cell in _RUNTIME_CELLS} |
+    {_cell_setting(cell): [Label("//cc/toolchains:msvc_vcruntime")] for cell in _WINDOWS_CELLS} |
     {"//conditions:default": []},
 )
 
@@ -1269,6 +1272,7 @@ def qt_bundle(name, binary, qml_modules = None, licenses = [], display = [], plu
         binary = binary,
         display_plugins = select({
             "@platforms//os:macos": [qt + "//:display_cocoa"] if len(display) > 0 else [],
+            "@platforms//os:windows": [],
             "//conditions:default": [qt + "//:display_" + platform for platform in display],
         }),
         license_files = [qt + "//:licenses"] + licenses,
