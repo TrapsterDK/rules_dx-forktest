@@ -131,17 +131,16 @@ impl Tool {
     }
 }
 
-/// Every file dx owns, keyed by workspace-relative path.
-pub fn render(inputs: &Inputs) -> Result<BTreeMap<String, Vec<u8>>, GenerateError> {
-    let selection = dx_config::effective(inputs.config.as_ref())?;
-    let root = selection.profile;
-    let mut families = BTreeMap::new();
-    let mut profiles: BTreeMap<&str, Profile> = BTreeMap::new();
+/// The tier of every tool selected for a detected family.
+fn selected_profiles<'a>(
+    selection: &'a dx_config::Selection,
+    families: &BTreeSet<String>,
+) -> BTreeMap<&'a str, Profile> {
+    let mut profiles = BTreeMap::new();
     for (id, family) in &selection.families {
-        if !inputs.families.contains(id) {
+        if !families.contains(id) {
             continue;
         }
-        families.insert(id.as_str(), family);
         for tool in family
             .lint
             .iter()
@@ -150,13 +149,50 @@ pub fn render(inputs: &Inputs) -> Result<BTreeMap<String, Vec<u8>>, GenerateErro
             .chain(&family.audit)
         {
             let profile = if CROSS_FAMILY_TOOLS.contains(&tool.as_str()) {
-                root
+                selection.profile
             } else {
                 family.profile
             };
-            profiles.insert(tool, profile);
+            profiles.insert(tool.as_str(), profile);
         }
     }
+    profiles
+}
+
+/// The root tool config each selected tool of a detected family binds, as (tool, file).
+pub fn bound_configs(
+    config: Option<&DxConfig>,
+    families: &BTreeSet<String>,
+    root_files: &BTreeSet<String>,
+) -> Result<Vec<(&'static str, String)>, GenerateError> {
+    let selection = dx_config::effective(config)?;
+    let profiles = selected_profiles(&selection, families);
+    let mut bound: Vec<(&'static str, String)> = TOOL_CONFIGS
+        .iter()
+        .filter(|config| !config.suffixes.is_empty())
+        .filter_map(|config| {
+            let tool = Tool {
+                config,
+                profile: *profiles.get(config.id)?,
+            };
+            Some((config.id, tool.root_file(root_files)?.to_owned()))
+        })
+        .collect();
+    bound.sort();
+    Ok(bound)
+}
+
+/// Every file dx owns, keyed by workspace-relative path.
+pub fn render(inputs: &Inputs) -> Result<BTreeMap<String, Vec<u8>>, GenerateError> {
+    let selection = dx_config::effective(inputs.config.as_ref())?;
+    let root = selection.profile;
+    let profiles = selected_profiles(&selection, &inputs.families);
+    let families: BTreeMap<&str, &dx_config::FamilySelection> = selection
+        .families
+        .iter()
+        .filter(|(id, _)| inputs.families.contains(*id))
+        .map(|(id, family)| (id.as_str(), family))
+        .collect();
     let mut tools: Vec<Tool> = TOOL_CONFIGS
         .iter()
         .filter_map(|config| {

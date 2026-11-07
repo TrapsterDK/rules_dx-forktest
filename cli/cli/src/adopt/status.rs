@@ -4,8 +4,9 @@ use clap::ValueEnum;
 
 use crate::exec::common::{check_stdout_write, emit_built, emit_event};
 use dx_output::{
-    CapabilityEvent, FinishedCounts, OutputMode, OwnedFileEvent, StatusEvent, capability_event,
-    command_finished, command_started, owned_file_event, status_event,
+    CapabilityEvent, FinishedCounts, OutputMode, OwnedFileEvent, StatusEvent, TierEvent,
+    ToolConfigEvent, capability_event, command_finished, command_started, owned_file_event,
+    status_event, tier_event, tool_config_event,
 };
 use dx_plan::args::grammar::advertises_passthrough;
 use dx_plan::args::{Command, Invocation};
@@ -195,6 +196,90 @@ fn owned_files(workspace: &std::path::Path) -> Result<Vec<OwnedFileEvent>, Strin
         .collect())
 }
 
+/// The tiers in force, the root tool configs bound to `.dx`, and any `dx.toml` problem.
+struct Bindings {
+    tiers: Vec<TierEvent>,
+    configs: Vec<ToolConfigEvent>,
+    problem: Option<dx_adopt::StatusCheck>,
+}
+
+fn problem_check(name: &str, detail: String) -> dx_adopt::StatusCheck {
+    dx_adopt::StatusCheck {
+        name: name.to_owned(),
+        status: "warn".to_owned(),
+        detail,
+        hint: format!("fix the {name} problem, then run dx status"),
+    }
+}
+
+fn bindings(workspace: &std::path::Path) -> Bindings {
+    let config = match dx_config::load(workspace) {
+        Ok(config) => config,
+        Err(error) => {
+            return Bindings {
+                tiers: Vec::new(),
+                configs: Vec::new(),
+                problem: Some(problem_check("dx.toml", error.to_string())),
+            };
+        }
+    };
+    let families = dx_adopt::detected_families(workspace);
+    let explicit = config.as_ref().and_then(|config| config.profile);
+    let from = |profile: Option<dx_config::Profile>, family: Option<String>| TierEvent {
+        family,
+        tier: profile.unwrap_or_default().as_str().to_owned(),
+        source: if profile.is_some() {
+            "dx.toml"
+        } else {
+            "default"
+        }
+        .to_owned(),
+    };
+    let mut tiers = vec![from(explicit, None)];
+    if let Some(config) = &config {
+        tiers.extend(config.families.iter().filter_map(|(id, family)| {
+            let profile = family.profile?;
+            (!family.disabled && families.contains(id))
+                .then(|| from(Some(profile), Some(id.clone())))
+        }));
+    }
+    let mut problem = None;
+    let mut root_files = std::collections::BTreeSet::new();
+    match std::fs::read_dir(workspace) {
+        Ok(entries) => {
+            root_files.extend(
+                entries.filter_map(|entry| {
+                    Some(entry.ok()?.file_name().to_string_lossy().into_owned())
+                }),
+            );
+        }
+        Err(error) => {
+            problem = Some(problem_check(
+                "workspace",
+                format!("cannot list the workspace: {error}"),
+            ))
+        }
+    }
+    let configs = match dx_generate::bound_configs(config.as_ref(), &families, &root_files) {
+        Ok(configs) => configs
+            .into_iter()
+            .map(|(tool, file)| ToolConfigEvent {
+                tool: tool.to_owned(),
+                file,
+            })
+            .collect(),
+        Err(error) => {
+            problem = Some(problem_check("dx.toml", error.to_string()));
+            Vec::new()
+        }
+    };
+    Bindings {
+        tiers,
+        configs,
+        problem,
+    }
+}
+
 fn lease_check(workspace: &std::path::Path) -> Option<dx_adopt::StatusCheck> {
     let (path, record) = dx_worktree::lease_for_workspace(workspace)?;
     let detail = match (record.holder(true), &record.branch) {
@@ -267,8 +352,10 @@ pub(crate) fn execute_status(
     } else {
         Vec::new()
     };
+    let mut bound = bindings(workspace);
     let mut checks =
         dx_adopt::observed_status_checks(workspace, dx_adopt::read_version_pin(workspace), tools);
+    checks.extend(bound.problem.take());
     checks.push(init_check(workspace));
     if let Some(check) = lease_check(workspace) {
         checks.push(check);
@@ -295,6 +382,23 @@ pub(crate) fn execute_status(
                 }),
             ) {
                 return exit;
+            }
+        }
+        let events = bound
+            .tiers
+            .iter()
+            .map(tier_event)
+            .chain(bound.configs.iter().map(tool_config_event));
+        for event in events {
+            match event {
+                Ok(event) => {
+                    if let Err(exit) = emit_event(out, &event) {
+                        return exit;
+                    }
+                }
+                Err(error) => {
+                    return operational(invocation, out, err, "invalid_result", &error.to_string());
+                }
             }
         }
         for capability in &records {
@@ -334,6 +438,19 @@ pub(crate) fn execute_status(
     {
         return exit;
     }
+    let tier_lines = bound.tiers.iter().map(|tier| match &tier.family {
+        Some(family) => format!("tier {family}: {} [source: {}]", tier.tier, tier.source),
+        None => format!("tier: {} [source: {}]", tier.tier, tier.source),
+    });
+    let config_lines = bound
+        .configs
+        .iter()
+        .map(|config| format!("config {}: {}", config.tool, config.file));
+    for line in tier_lines.chain(config_lines) {
+        if let Err(exit) = check_stdout_write(writeln!(out, "{line}")) {
+            return exit;
+        }
+    }
     for capability in &records {
         if let Err(exit) = check_stdout_write(writeln!(out, "{}", capability_line(capability))) {
             return exit;
@@ -357,7 +474,7 @@ pub(crate) fn execute_status(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::adopt::test_support::{event_kinds, invocation, json_events, run};
+    use crate::adopt::test_support::{event, event_kinds, invocation, json_events, run};
     use std::io;
 
     #[test]
@@ -592,6 +709,107 @@ mod tests {
             .expect("pin status event");
         assert_eq!(status["status"], serde_json::json!("ok"));
         assert!(err.is_empty());
+    }
+
+    fn status_with(files: &[(&str, &str)], words: &[&str]) -> String {
+        let scratch = dx_test_scratch::scratch("dx-adopt-status-tier-");
+        let root = scratch.path().to_path_buf();
+        write_module(&root);
+        for (name, text) in files {
+            std::fs::write(root.join(name), text).expect("file");
+        }
+        run(&invocation(words), &root).1
+    }
+
+    #[test]
+    fn status_without_dx_toml_is_the_default_standard_tier() {
+        let out = status_with(&[], &["status"]);
+        assert!(out.contains("tier: standard [source: default]\n"), "{out}");
+        assert!(!out.contains("\nconfig "), "{out}");
+    }
+
+    #[test]
+    fn status_reads_the_tier_from_dx_toml() {
+        let out = status_with(
+            &[("dx.toml", "schema_version = 1\ntier = \"strict\"\n")],
+            &["status"],
+        );
+        assert!(out.contains("tier: strict [source: dx.toml]\n"), "{out}");
+    }
+
+    #[test]
+    fn status_shows_a_family_tier_override() {
+        let files = [
+            ("a.py", "x = 1\n"),
+            (
+                "dx.toml",
+                "schema_version = 1\n[families.python]\ntier = \"strict\"\n",
+            ),
+        ];
+        let out = status_with(&files, &["status"]);
+        assert!(out.contains("tier: standard [source: default]\n"), "{out}");
+        assert!(
+            out.contains("tier python: strict [source: dx.toml]\n"),
+            "{out}"
+        );
+        let json = json_events(&status_with(&files, &["status", "--output=json"]));
+        let family = json
+            .iter()
+            .find(|event| event["event"] == "tier" && event["family"] == "python")
+            .expect("family tier event");
+        assert_eq!(family["tier"], "strict");
+    }
+
+    #[test]
+    fn status_skips_the_tier_of_a_disabled_family() {
+        let files = [
+            ("a.py", "x = 1\n"),
+            (
+                "dx.toml",
+                "schema_version = 1\n[families.python]\ntier = \"strict\"\ndisabled = true\n",
+            ),
+        ];
+        let out = status_with(&files, &["status"]);
+        assert!(!out.contains("tier python"), "{out}");
+    }
+
+    #[test]
+    fn status_warns_about_an_unparsable_dx_toml() {
+        let files = [("dx.toml", "tier = [\n")];
+        let out = status_with(&files, &["status"]);
+        assert!(out.contains("dx.toml: warn"), "{out}");
+        let json = json_events(&status_with(&files, &["status", "--output=json"]));
+        let check = json
+            .iter()
+            .find(|event| event["event"] == "status" && event["name"] == "dx.toml")
+            .expect("dx.toml status event");
+        assert_eq!(check["status"], "warn");
+    }
+
+    #[test]
+    fn status_warns_about_an_unknown_family() {
+        let files = [(
+            "dx.toml",
+            "schema_version = 1\n[families.pyhton]\ntier = \"strict\"\n",
+        )];
+        let out = status_with(&files, &["status"]);
+        assert!(out.contains("dx.toml: warn"), "{out}");
+        assert!(out.contains("unknown family `pyhton`"), "{out}");
+        assert!(out.contains("tier: standard [source: default]\n"), "{out}");
+    }
+
+    #[test]
+    fn status_lists_the_root_config_of_a_detected_tool() {
+        let files = [("a.py", "x = 1\n"), ("ruff.toml", "")];
+        let out = status_with(&files, &["status"]);
+        assert!(out.contains("config ruff: ruff.toml\n"), "{out}");
+        let json = json_events(&status_with(&files, &["status", "--output=json"]));
+        let tier = event(&json, "tier");
+        assert_eq!(tier["tier"], "standard");
+        assert_eq!(tier["source"], "default");
+        let config = event(&json, "tool_config");
+        assert_eq!(config["tool"], "ruff");
+        assert_eq!(config["file"], "ruff.toml");
     }
 
     fn assert_pin_warns(words: &[&str], root: &std::path::Path) {

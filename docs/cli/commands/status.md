@@ -38,6 +38,8 @@ Scopes: none.
 | `lease` | Inside a `dx worktree` slot: holder and branch. |
 | `share` | While build slots are held: held slots and the CPUs and memory a new run gets. |
 | `slots` | `warn` for each `slot-N.lock` file dx cannot open. |
+| `dx.toml` | `warn` when `dx.toml` does not parse or its tool configs cannot be bound. |
+| `workspace` | `warn` when dx cannot list the workspace root. |
 
 `ok` passes. `warn` does not fail. `error` fails; the hint is the fix.
 
@@ -49,11 +51,23 @@ Text prints one line per check:
 toolchain: ok (available: rust 1.99.1 via rules_rust 0.75.0 declared in MODULE.bazel) hint: bazel build //...
 ```
 
+After the checks, text prints the tier (unless `dx.toml` fails to parse) and the bound root tool configs:
+
+```text
+tier: strict [source: dx.toml]
+tier python: standard [source: dx.toml]
+config ruff: ruff.toml
+```
+
+`tier` is `standard` or `strict`. `source` is `dx.toml` when it sets `tier` and `default` otherwise. A detected, enabled family that sets its own `tier` in `dx.toml` adds a `tier <family>: ...` line. One `config <tool>: <root file>` line follows for each tool of a detected family whose root config file exists; `//.dx:<tool>` binds that file.
+
 With `--capabilities`, text adds one `capability <name>` line per command.
 
 With `--files`, text adds one `file <path> <owns> <state>` line per file `dx init` writes. `state` is `current`, `stale` (a dx-owned value is out of date), `missing` (an essential file is gone), `absent` (an optional file is gone) or `yours` (a `once` file that exists, which dx never rewrites). `docs/cli/commands/init.md` lists the labels.
 
 JSON streams `command_started`, one `status` event per check (`name`, `status`, `detail`, `hint`), then `command_finished`. With `--capabilities` it adds one `capability` event per command (`name`, `source`, `availability`, `detail`, `flags`, `outputs`, `reports`, `scope_policy`, `effect`, `passthrough`). `source` is `cli-grammar` or `workspace-record`. `availability` is `available`, `unavailable` or `unknown`.
+
+JSON adds a `tier` event (`tier`, `source`, and `family` for a per-family tier) and one `tool_config` event (`tool`, `file`) per bound root config, before any `capability` events.
 
 With `--files` JSON adds one `owned_file` event per file (`path`, `owns`, `state`).
 
