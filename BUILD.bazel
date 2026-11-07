@@ -6,6 +6,7 @@ load("//quality:fixtures.bzl", "real_source_target")
 load("//quality:json_schema.bzl", "json_schema", "json_schemas")
 
 # gazelle:dx_fixture_testonly true
+# gazelle:dx_native_tools buildifier taplo rustfmt
 # gazelle:resolve rust dx_adopt //cli/adopt:dx_adopt
 # gazelle:resolve rust dx_apply //cli/apply:dx_apply
 # gazelle:resolve rust dx_atomic_fs //cli/atomic_fs:dx_atomic_fs
@@ -61,6 +62,10 @@ load("//quality:json_schema.bzl", "json_schema", "json_schemas")
 # gazelle:resolve rust quality_result //quality/result:quality_result
 # gazelle:dx_corpus true
 # gazelle:dx_external maven third_party/jvm/maven_install.json maven
+# gazelle:dx_external maven third_party/jvm/rules_android_maven_install.json rules_android_maven
+# gazelle:dx_external maven third_party/jvm/scala3_test_install.json dx_scala3_test
+# gazelle:dx_external maven third_party/jvm/scalafix_install.json dx_scalafix
+# gazelle:dx_external maven third_party/jvm/dokka_install.json dx_dokka
 # gazelle:exclude gazelle/rust/testdata
 # gazelle:exclude go/tests/fixtures/gotype
 # gazelle:exclude go/tools/modfmt
@@ -224,6 +229,7 @@ alias(
 js_library(
     name = "package_json",
     srcs = ["package.json"],
+    visibility = ["//visibility:public"],
 )
 
 npm_link_all_packages(name = "node_modules")
@@ -389,6 +395,7 @@ real_source_target(
         "rustfmt.toml",
         "licenses.toml",
         "security.toml",
+        "dx.toml",
     ],
 )
 
