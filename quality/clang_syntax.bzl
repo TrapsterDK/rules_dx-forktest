@@ -2,9 +2,11 @@
 
 load("@apple_support//lib:apple_support.bzl", "apple_support")
 load("@apple_support//xcode:providers.bzl", "XcodeVersionInfo")
+load("@rules_cc//cc:action_names.bzl", "ACTION_NAMES")
+load("@rules_cc//cc/common:cc_common.bzl", "cc_common")
 load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 load("//libs/starlark:resources.bzl", "dx_heavy_resources")
-load("//cc/toolchains:bindings.bzl", "CC_TOOLCHAIN_TYPE", "cc_toolchain_identity")
+load("//cc/toolchains:bindings.bzl", "CC_TOOLCHAIN_TYPE", "cc_toolchain_identity", "cc_toolchain_info")
 load("//quality/private:native_config_impl.bzl", "DxNativeConfigInfo", "bound_config_targets")
 load("//quality:nvcc_syntax.bzl", "nvcc_syntax_select", "nvcc_syntax_source")
 load("//quality:policy.bzl", "QualityPolicyInfo")
@@ -136,7 +138,20 @@ _MSVC_TIDY_UNSUPPORTED = {
     "ZW": "C++/CX",
 }
 
-def _msvc_tidy_argv(tidy, argv, src, identity, config):
+def _toolchain_compile_env(ctx):
+    cc_toolchain = cc_toolchain_info(ctx)
+    if cc_toolchain == None:
+        return {}
+    config = cc_common.configure_features(ctx = ctx, cc_toolchain = cc_toolchain)
+    variables = cc_common.create_compile_variables(
+        feature_configuration = config,
+        cc_toolchain = cc_toolchain,
+        source_file = "a.c",
+        output_file = "a.obj",
+    )
+    return cc_common.get_environment_variables(feature_configuration = config, action_name = ACTION_NAMES.cpp_compile, variables = variables)
+
+def _msvc_tidy_argv(tidy, argv, src, identity, config, env):
     rewritten = clang_syntax_argv(argv, src, identity)
     if rewritten.error != "":
         return rewritten
@@ -155,11 +170,19 @@ def _msvc_tidy_argv(tidy, argv, src, identity, config):
             continue
         flags.append(arg)
     target = ["--target=" + identity.target] if identity.target else []
+    imsvc = []
+    if not [a for a in flags if a.startswith(("/imsvc", "-imsvc", "/winsysroot", "-winsysroot"))]:
+        for key in ["INCLUDE", "EXTERNAL_INCLUDE"]:
+            for path in env.get(key, "").split(";"):
+                if path:
+                    imsvc.append("/imsvc" + path.replace("\\", "/"))
+        if imsvc:
+            imsvc.append("/X")
 
     # driver mode must follow `--`; clang-tidy strips /-flags otherwise (LLVM #66553, CMake #25708).
-    return struct(argv = [tidy] + _config_flag(config) + [src, "--", "--driver-mode=cl"] + target + flags, error = "")
+    return struct(argv = [tidy] + _config_flag(config) + [src, "--", "--driver-mode=cl"] + target + imsvc + flags, error = "")
 
-def clang_tidy_argv(tidy, argv, src, identity, config = ""):
+def clang_tidy_argv(tidy, argv, src, identity, config = "", env = {}):
     """Projects a compile command line into a clang-tidy command line.
 
     Args:
@@ -168,13 +191,14 @@ def clang_tidy_argv(tidy, argv, src, identity, config = ""):
       src: string: the source path the action compiles.
       identity: struct: the compiler identity from cc_compiler_identity.
       config: string: the .clang-tidy path, or empty for none.
+      env: dict: the compile action environment; INCLUDE and EXTERNAL_INCLUDE become /imsvc for msvc.
 
     Returns:
       A struct with `argv` (clang-tidy, the source, `--`, then the compile flags) and
       `error` (non-empty when the command line cannot be projected).
     """
     if identity.driver == "msvc":
-        return _msvc_tidy_argv(tidy, argv, src, identity, config)
+        return _msvc_tidy_argv(tidy, argv, src, identity, config, env)
     rewritten = clang_syntax_argv(argv, src, identity)
     if rewritten.error != "":
         return rewritten
@@ -318,6 +342,7 @@ def _clang_syntax_impl(target, ctx):
     statuses = []
     tidy_diagnostics = []
     drivers = []
+    toolchain_env = _toolchain_compile_env(ctx) if identity.driver == "msvc" else {}
     cuda_indices = [i for i in range(len(actions)) if actions[i].mnemonic == "CudaCompile"]
     cuda_keep = [cuda_indices[j] for j in nvcc_syntax_select([actions[i].argv or [] for i in cuda_indices])]
     for i in range(len(actions)):
@@ -359,7 +384,8 @@ def _clang_syntax_impl(target, ctx):
         all_inputs = depset(transitive = [action.inputs, headers])
         driver = ctx.actions.declare_file("dx_clang_syntax/%s.driver" % stem)
         ctx.actions.write(output = driver, content = identity.driver)
-        tidy_argv = clang_tidy_argv(tidy.path, list(argv), src, identity, tidy_config)
+        base_env = toolchain_env | dict(action.env)
+        tidy_argv = clang_tidy_argv(tidy.path, list(argv), src, identity, tidy_config, base_env)
         tidy_log = ctx.actions.declare_file("dx_clang_tidy/%s.log" % stem)
         requirements = {}
         if action.mnemonic == "ObjcCompile":
@@ -367,7 +393,7 @@ def _clang_syntax_impl(target, ctx):
         capture = 'log="$1"; status="$2"; shift 2; "$@" 2> "$log"; echo "$?" > "$status"'
         if identity.driver == "msvc":
             capture = 'log="$1"; status="$2"; shift 2; "$@" > "$log" 2>&1; echo "$?" > "$status"'
-        syntax_env = clang_action_env(action.env, identity.driver)
+        syntax_env = clang_action_env(base_env, identity.driver)
         # run_shell: The shell redirects output or runs the bash runner script.
         ctx.actions.run_shell(
             mnemonic = "ClangSyntax",
@@ -396,7 +422,7 @@ def _clang_syntax_impl(target, ctx):
                 resource_set = dx_heavy_resources,
             )
         argvs.append(list(argv))
-        envs.append(dict(action.env))
+        envs.append(base_env)
         inputs.append(all_inputs)
         tidy_diagnostics.append(tidy_log)
         sources.append(src)
@@ -412,6 +438,7 @@ clang_syntax_aspect = aspect(
     implementation = _clang_syntax_impl,
     doc = "Replays the compile actions of a C/C++/Objective-C target with -fsyntax-only.",
     attr_aspects = ["upstream"],
+    fragments = ["cpp"],
     toolchains = [config_common.toolchain_type(CC_TOOLCHAIN_TYPE, mandatory = False)],
     attrs = apple_support.action_required_attrs() | {
         "_policy": attr.label(
