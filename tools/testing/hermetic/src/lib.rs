@@ -306,9 +306,6 @@ fn windows_host_dirs() -> Vec<PathBuf> {
 
 pub const AMBIENT_MARKER: &str = "dx-hermetic: undeclared ambient tool";
 
-/// Bazel's strict action PATH on Windows is fixed, so the shim never runs there and PowerShell reports the tool missing.
-pub const WINDOWS_AMBIENT_MARKER: &str = "CommandNotFoundException";
-
 pub const NETWORK_MARKER: &str = "Network is unreachable";
 
 pub const HOME_MARKER: &str = "dx-hermetic: home config absent";
@@ -318,7 +315,7 @@ pub fn markers(os: &str) -> (&'static str, &'static str, &'static str) {
     if os == "macos" {
         (MACOS_DENIED_MARKER, MACOS_DENIED_MARKER, HOME_MARKER)
     } else if os == "windows" {
-        (WINDOWS_AMBIENT_MARKER, WINDOWS_DENIED_MARKER, HOME_MARKER)
+        (AMBIENT_MARKER, WINDOWS_DENIED_MARKER, HOME_MARKER)
     } else {
         (AMBIENT_MARKER, NETWORK_MARKER, HOME_MARKER)
     }
@@ -420,6 +417,15 @@ pub struct Manifest {
     pub dx: PathBuf,
     pub module_file: PathBuf,
     pub bazelversion: PathBuf,
+}
+
+impl Manifest {
+    /// Whether the qualification builds with the host's Visual Studio toolchain rules.
+    pub fn is_msvc(&self) -> bool {
+        self.compiler
+            .as_ref()
+            .is_some_and(|(name, _)| name == "msvc")
+    }
 }
 
 fn strings(value: &Value, key: &str) -> Result<Vec<String>, String> {
@@ -825,7 +831,7 @@ impl Isolation {
                 }
             }
         }
-        Ok(Self {
+        let mut isolation = Self {
             shim: shim.to_path_buf(),
             tools,
             sdk_dirs,
@@ -839,7 +845,33 @@ impl Isolation {
                 .unwrap_or_default(),
             grants: keep.to_vec(),
             denies: Vec::new(),
-        })
+        };
+        if cfg!(windows) {
+            isolation.denies = isolation.windows_denies();
+        }
+        Ok(isolation)
+    }
+
+    /// The planned SDK, home and tool paths the Windows run must not read, minus anything
+    /// that holds or sits inside a grant, since a deny beats any grant.
+    pub fn windows_denies(&self) -> Vec<PathBuf> {
+        let mut denies: Vec<PathBuf> = Vec::new();
+        for path in self
+            .sdk_dirs
+            .iter()
+            .chain(&self.home_dirs)
+            .chain(&self.home_files)
+            .chain(&self.tools)
+        {
+            let touches_grant = self
+                .grants
+                .iter()
+                .any(|grant| covers(path, grant) || covers(grant, path));
+            if !touches_grant && !denies.iter().any(|deny| covers(deny, path)) {
+                denies.push(path.clone());
+            }
+        }
+        denies
     }
 
     /// Returns the namespace setup script; "$@" is the command run as the real user.
@@ -1106,7 +1138,7 @@ impl Session {
             ("TEMP".to_owned(), temp.to_string_lossy().into_owned()),
             ("TMP".to_owned(), temp.to_string_lossy().into_owned()),
         ];
-        for key in windows_passthrough(!self.isolation.denies.is_empty()) {
+        for key in windows_passthrough(self.manifest.is_msvc()) {
             if let Ok(value) = std::env::var(key) {
                 env.push((key.to_owned(), value));
             }
@@ -2218,10 +2250,11 @@ fn windows_host_msvc_denies() -> Vec<PathBuf> {
 /// Confirms the denied host trees are unreadable inside the isolation.
 pub fn deny_check(isolation: &Isolation) -> Result<(), String> {
     for deny in &isolation.denies {
+        let command = if deny.is_dir() { "dir /b" } else { "type" };
         let probe = vec![
             "cmd.exe".to_owned(),
             "/c".to_owned(),
-            format!("dir /b \"{}\"", deny.display()),
+            format!("{command} \"{}\"", deny.display()),
         ];
         let outcome = capture(isolation.command(Net::Denied, &probe))?;
         if outcome.exit == 0 {
@@ -2299,13 +2332,8 @@ fn run_all(
     let keep = vec![root.to_path_buf(), out.to_path_buf(), source.clone()];
     let host = HostPaths::detect();
     let mut isolation = Isolation::plan_with(&host, &shim, &keep, real_home.as_deref())?;
-    if cfg!(windows)
-        && manifest
-            .compiler
-            .as_ref()
-            .is_some_and(|(name, _)| name == "msvc")
-    {
-        isolation.denies = windows_host_msvc_denies();
+    if cfg!(windows) && manifest.is_msvc() {
+        isolation.denies.extend(windows_host_msvc_denies());
     }
     let ambient = ambient_tools(&host.tool_dirs, AMBIENT_TOOLS)
         .into_iter()
