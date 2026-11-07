@@ -156,7 +156,6 @@ fn setup_bazel_documents() -> Vec<(String, serde_json::Value)> {
 
 const LOCATE: &str = "Locate the Bazel repository cache";
 const RESOLVE: &str = "Resolve the setup inputs";
-const CREDENTIALS: &str = "Configure the remote cache credential helper";
 const ACTION_FILE: &str = ".github/actions/setup-bazel/action.yml";
 
 fn steps_named(steps: &[serde_json::Value], name: &str) -> Vec<usize> {
@@ -358,18 +357,87 @@ fn windows_jobs_put_the_output_root_on_d_before_the_first_bazel_call() {
 }
 
 #[test]
-fn a_configured_remote_cache_turns_on_the_remote_repo_contents_cache() {
+fn the_remote_repo_contents_cache_comes_from_the_preset_not_the_action() {
     let action = action_document();
     let steps = action["runs"]["steps"].as_array().expect("action steps");
-    let step = &steps[action_index(steps, CREDENTIALS)];
-    let run = step["run"].as_str().unwrap();
-    let gate = run
-        .find("if [ -n \"$args\" ]; then")
-        .expect("the credential step no longer checks $args");
-    let line = "echo \"startup --experimental_remote_repo_contents_cache\" >> user.bazelrc";
+    for step in steps {
+        let run = step["run"].as_str().unwrap_or_default();
+        assert!(
+            !run.contains("experimental_remote_repo_contents_cache"),
+            "{ACTION_FILE} echoes a flag the dx preset already sets"
+        );
+    }
+}
+
+const REGISTRY: &str = "Restore the registry file cache";
+
+fn evidence_steps() -> Vec<serde_json::Value> {
+    let (name, text) = workflows()
+        .into_iter()
+        .find(|(name, _)| name.ends_with("workflows/evidence.yml"))
+        .expect("evidence.yml is in the workflow runfiles");
+    let document: serde_json::Value =
+        yaml_serde::from_str(&text).unwrap_or_else(|err| panic!("{name} is not YAML: {err}"));
+    document["jobs"]
+        .as_object()
+        .expect("evidence jobs")
+        .values()
+        .filter_map(|job| job["steps"].as_array())
+        .find(|steps| {
+            steps
+                .iter()
+                .any(|step| step["uses"].as_str() == Some(LOCAL_ACTION))
+        })
+        .expect("an evidence job runs setup-bazel")
+        .clone()
+}
+
+#[test]
+fn the_registry_cache_falls_back_to_the_newest_cache_for_the_runner() {
+    let action = action_document();
+    let steps = action["runs"]["steps"].as_array().expect("action steps");
+    let step = &steps[action_index(steps, REGISTRY)];
+    assert_eq!(step["id"], "registry");
+    let prefix = "dx-registry-${{ runner.os }}-${{ runner.arch }}-";
+    assert_eq!(step["with"]["restore-keys"], prefix);
     assert!(
-        run[gate..].contains(line),
-        "{ACTION_FILE} must turn on the remote repo contents cache when a remote cache is set"
+        step["with"]["key"]
+            .as_str()
+            .is_some_and(|key| key.starts_with(prefix)),
+        "the registry cache key must keep the {prefix} prefix"
+    );
+    assert_eq!(
+        action["outputs"]["registry-cache-hit"]["value"],
+        "${{ steps.registry.outputs.cache-hit }}"
+    );
+}
+
+#[test]
+fn evidence_saves_the_registry_cache_only_without_an_exact_hit() {
+    let steps = evidence_steps();
+    let setup = steps
+        .iter()
+        .find(|step| step["uses"].as_str() == Some(LOCAL_ACTION))
+        .unwrap();
+    assert_eq!(setup["id"], "setup");
+    let save = steps
+        .iter()
+        .find(|step| step["uses"].as_str() == Some("./.github/actions/save-registry-cache"))
+        .expect("evidence saves the registry cache");
+    assert_eq!(
+        save["if"],
+        "${{ steps.setup.outputs.registry-cache-hit != 'true' }}"
+    );
+}
+
+#[test]
+fn the_apple_executor_probe_does_not_hold_the_step_output_open() {
+    let steps = evidence_steps();
+    let probe = &steps[steps_named(&steps, "Start recording the Apple executor")[0]];
+    let run = probe["run"].as_str().unwrap();
+    assert!(
+        run.trim_end().ends_with("} > /dev/null 2>&1 &"),
+        "the background probe must detach from the step output, or the step waits for it"
     );
 }
 
