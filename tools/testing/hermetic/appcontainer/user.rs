@@ -2,18 +2,23 @@
 //! account is also denied the DNS Client service's RPC port, so it cannot resolve names through
 //! a service that queries on its behalf.
 //!
+//! With `--group`, the account joins a local group that `setup_group` gave the grants and
+//! denies once, so a run does not rewrite the inherited ACLs of whole trees twice.
+//!
 //! Inside an AppContainer the Mount Manager refuses `GetFinalPathNameByHandleW` with a DOS
 //! volume name, which Bazel's client needs. A normal user token passes.
 use std::ffi::c_void;
 use std::ptr::{null, null_mut};
+use std::time::Duration;
 
 use windows_sys::Win32::Foundation::{
     CloseHandle, DUPLICATE_SAME_ACCESS, DuplicateHandle, ERROR_NOT_ALL_ASSIGNED, GetLastError,
     HANDLE, LUID, LocalFree,
 };
 use windows_sys::Win32::NetworkManagement::NetManagement::{
-    LOCALGROUP_MEMBERS_INFO_3, NetLocalGroupAddMembers, NetUserAdd, NetUserDel,
-    UF_DONT_EXPIRE_PASSWD, UF_PASSWD_CANT_CHANGE, UF_SCRIPT, USER_INFO_1, USER_PRIV_USER,
+    LOCALGROUP_INFO_0, LOCALGROUP_MEMBERS_INFO_3, NetLocalGroupAdd, NetLocalGroupAddMembers,
+    NetLocalGroupDel, NetUserAdd, NetUserDel, UF_DONT_EXPIRE_PASSWD, UF_PASSWD_CANT_CHANGE,
+    UF_SCRIPT, USER_INFO_1, USER_PRIV_USER,
 };
 use windows_sys::Win32::NetworkManagement::WindowsFilteringPlatform::{
     FWP_ACTION_BLOCK, FWP_ACTION_PERMIT, FWP_BYTE_BLOB, FWP_CONDITION_FLAG_IS_LOOPBACK,
@@ -26,18 +31,22 @@ use windows_sys::Win32::NetworkManagement::WindowsFilteringPlatform::{
 };
 use windows_sys::Win32::Security::Authentication::Identity::RtlGenRandom;
 use windows_sys::Win32::Security::Authorization::{
-    ConvertSidToStringSidW, ConvertStringSecurityDescriptorToSecurityDescriptorW, GetSecurityInfo,
-    SDDL_REVISION_1, SE_KERNEL_OBJECT, SetEntriesInAclW, SetSecurityInfo,
+    ConvertSidToStringSidW, ConvertStringSecurityDescriptorToSecurityDescriptorW,
+    GetNamedSecurityInfoW, GetSecurityInfo, SDDL_REVISION_1, SE_FILE_OBJECT, SE_KERNEL_OBJECT,
+    SetEntriesInAclW, SetNamedSecurityInfoW, SetSecurityInfo,
 };
 use windows_sys::Win32::Security::{
-    ACL, AdjustTokenPrivileges, DACL_SECURITY_INFORMATION, GetSecurityDescriptorLength,
-    LUID_AND_ATTRIBUTES, LookupAccountNameW, LookupPrivilegeValueW, SE_PRIVILEGE_ENABLED,
-    TOKEN_ADJUST_PRIVILEGES, TOKEN_PRIVILEGES,
+    ACCESS_ALLOWED_ACE, ACL, AdjustTokenPrivileges, DACL_SECURITY_INFORMATION, DeleteAce, EqualSid,
+    GetAce, GetSecurityDescriptorLength, INHERITED_ACE, LUID_AND_ATTRIBUTES, LookupAccountNameW,
+    LookupPrivilegeValueW, SE_PRIVILEGE_ENABLED, TOKEN_ADJUST_PRIVILEGES, TOKEN_PRIVILEGES,
 };
 use windows_sys::Win32::System::Console::{
     GetStdHandle, STD_ERROR_HANDLE, STD_INPUT_HANDLE, STD_OUTPUT_HANDLE,
 };
-use windows_sys::Win32::System::JobObjects::AssignProcessToJobObject;
+use windows_sys::Win32::System::JobObjects::{
+    AssignProcessToJobObject, JOBOBJECT_BASIC_ACCOUNTING_INFORMATION,
+    JobObjectBasicAccountingInformation, QueryInformationJobObject, TerminateJobObject,
+};
 use windows_sys::Win32::System::Threading::{
     CreateMutexW, CreateProcessWithLogonW, GetCurrentProcess, GetExitCodeProcess,
     LOGON_WITH_PROFILE, OpenProcess, OpenProcessToken, PROCESS_DUP_HANDLE, PROCESS_INFORMATION,
@@ -54,8 +63,10 @@ use crate::sys::{
 };
 
 const RPC_C_AUTHN_DEFAULT: u32 = 0xFFFF_FFFF;
+const ERROR_FILE_NOT_FOUND: u32 = 2;
 const ERROR_ACCESS_DENIED: u32 = 5;
 const ERROR_MEMBER_IN_ALIAS: u32 = 1378;
+const ERROR_ALIAS_EXISTS: u32 = 1379;
 const BLOCK_WEIGHT: u8 = 1;
 const PERMIT_WEIGHT: u8 = 10;
 const PORT_ALL_ACCESS: u32 = 0x001F_0001;
@@ -129,10 +140,10 @@ impl Session {
 impl Drop for Session {
     fn drop(&mut self) {
         if !self.job.is_null() {
-            unsafe { CloseHandle(self.job) };
+            end_job(self.job);
         }
         for path in &self.acl_paths {
-            let _ = set_access(path, self.sid(), REVOKE_ACCESS);
+            let _ = remove_access(path, self.sid());
         }
         if !self.dns_port.is_null() {
             let _ = set_port_access(self.dns_port, self.sid(), REVOKE_ACCESS);
@@ -140,13 +151,57 @@ impl Drop for Session {
         }
         if self.created {
             if !self.sid_text.is_empty() {
-                unsafe { DeleteProfileW(wide(&self.sid_text).as_ptr(), null(), null()) };
+                delete_profile(&self.sid_text);
             }
             unsafe { NetUserDel(null(), self.user.as_ptr()) };
         }
         if !self.engine.is_null() {
             unsafe { FwpmEngineClose0(self.engine) };
         }
+    }
+}
+
+/// Kills what is left in the job and waits until it is empty, so the profile is no longer in use.
+fn end_job(job: HANDLE) {
+    let mut info: JOBOBJECT_BASIC_ACCOUNTING_INFORMATION = unsafe { std::mem::zeroed() };
+    unsafe { TerminateJobObject(job, 1) };
+    for _ in 0..100 {
+        let ok = unsafe {
+            QueryInformationJobObject(
+                job,
+                JobObjectBasicAccountingInformation,
+                &mut info as *mut _ as *mut c_void,
+                std::mem::size_of_val(&info) as u32,
+                null_mut(),
+            )
+        };
+        if ok == 0 || info.ActiveProcesses == 0 {
+            break;
+        }
+        std::thread::sleep(Duration::from_millis(100));
+    }
+    unsafe { CloseHandle(job) };
+}
+
+/// Deletes the account's profile. The profile service unloads it a little after the last
+/// process exits and refuses to delete it until then, so a profile left behind on every
+/// run would fill the system disk.
+fn delete_profile(sid: &str) {
+    let sid = wide(sid);
+    let mut err = None;
+    for _ in 0..60 {
+        if unsafe { DeleteProfileW(sid.as_ptr(), null(), null()) } != 0 {
+            return;
+        }
+        let last = std::io::Error::last_os_error();
+        if last.raw_os_error() == Some(ERROR_FILE_NOT_FOUND as i32) {
+            return;
+        }
+        err = Some(last);
+        std::thread::sleep(Duration::from_millis(250));
+    }
+    if let Some(err) = err {
+        eprintln!("appcontainer_run: cannot delete the run account's profile: {err}");
     }
 }
 
@@ -181,35 +236,39 @@ fn create_user(session: &mut Session, password: &str) -> Result<(), String> {
     }
     check(code, "creating the local account")?;
     session.created = true;
+    add_member(
+        &session.user,
+        "Users",
+        "adding the account to the Users group (it needs the local logon right)",
+    )
+}
 
-    let mut member = session.user.clone();
-    let group = LOCALGROUP_MEMBERS_INFO_3 {
+fn add_member(user: &[u16], group: &str, what: &str) -> Result<(), String> {
+    let mut member = user.to_vec();
+    let info = LOCALGROUP_MEMBERS_INFO_3 {
         lgrmi3_domainandname: member.as_mut_ptr(),
     };
     let code = unsafe {
         NetLocalGroupAddMembers(
             null(),
-            wide("Users").as_ptr(),
+            wide(group).as_ptr(),
             3,
-            &group as *const _ as *const u8,
+            &info as *const _ as *const u8,
             1,
         )
     };
-    if code != ERROR_MEMBER_IN_ALIAS {
-        check(
-            code,
-            "adding the account to the Users group (it needs the local logon right)",
-        )?;
+    if code == ERROR_MEMBER_IN_ALIAS {
+        return Ok(());
     }
-    Ok(())
+    check(code, what)
 }
 
-fn look_up_sid(session: &mut Session) -> Result<(), String> {
+fn account_sid(name: &[u16]) -> Result<Vec<u8>, String> {
     let (mut sid_len, mut domain_len, mut kind) = (0u32, 0u32, 0i32);
     unsafe {
         LookupAccountNameW(
             null(),
-            session.user.as_ptr(),
+            name.as_ptr(),
             null_mut(),
             &mut sid_len,
             null_mut(),
@@ -222,7 +281,7 @@ fn look_up_sid(session: &mut Session) -> Result<(), String> {
     let found = unsafe {
         LookupAccountNameW(
             null(),
-            session.user.as_ptr(),
+            name.as_ptr(),
             sid.as_mut_ptr() as *mut c_void,
             &mut sid_len,
             domain.as_mut_ptr(),
@@ -232,11 +291,16 @@ fn look_up_sid(session: &mut Session) -> Result<(), String> {
     };
     if found == 0 {
         return Err(format!(
-            "cannot look up the account SID: {}",
+            "cannot look up the SID of {}: {}",
+            String::from_utf16_lossy(&name[..name.len() - 1]),
             std::io::Error::last_os_error()
         ));
     }
-    session.sid = sid;
+    Ok(sid)
+}
+
+fn look_up_sid(session: &mut Session) -> Result<(), String> {
+    session.sid = account_sid(&session.user)?;
     let mut text: *mut u16 = null_mut();
     if unsafe { ConvertSidToStringSidW(session.sid(), &mut text) } == 0 {
         return Err("cannot print the account SID".to_owned());
@@ -689,15 +753,143 @@ pub fn run(config: &Config) -> Result<i32, String> {
         block_network(&mut session)?;
         deny_dns_client(&mut session)?;
     }
-    for (path, mode) in config
+    if let Some(group) = &config.group {
+        // Before the logon, so the group is in the account's token.
+        add_member(
+            &session.user,
+            group,
+            &format!("adding the account to {group}"),
+        )?;
+    } else {
+        for (path, mode) in acl_entries(config) {
+            set_access(path, session.sid(), mode)?;
+            session.acl_paths.push(path.clone());
+        }
+    }
+    session.job = kill_on_close_job()?;
+    spawn(config, &session, &password)
+}
+
+fn acl_entries(config: &Config) -> impl Iterator<Item = (&String, i32)> {
+    config
         .grants
         .iter()
         .map(|path| (path, GRANT_ACCESS))
         .chain(config.denies.iter().map(|path| (path, DENY_ACCESS)))
-    {
-        set_access(path, session.sid(), mode)?;
-        session.acl_paths.push(path.clone());
+}
+
+/// Creates the local group and gives it the grants and denies, inherited by everything below.
+/// Undoes all of it if any step fails.
+pub fn setup_group(config: &Config) -> Result<i32, String> {
+    let group = config.group.as_deref().ok_or("no group to set up")?;
+    let name = wide(group);
+    let mut info_name = name.clone();
+    let info = LOCALGROUP_INFO_0 {
+        lgrpi0_name: info_name.as_mut_ptr(),
+    };
+    let code = unsafe { NetLocalGroupAdd(null(), 0, &info as *const _ as *const u8, null_mut()) };
+    if code == ERROR_ACCESS_DENIED {
+        return Err(
+            "NetLocalGroupAdd failed with error 5: the user backend must run elevated (as administrator)"
+                .to_owned(),
+        );
     }
-    session.job = kill_on_close_job()?;
-    spawn(config, &session, &password)
+    if code != ERROR_ALIAS_EXISTS {
+        check(code, &format!("creating the local group {group}"))?;
+    }
+    let applied = account_sid(&name).and_then(|mut sid| {
+        acl_entries(config)
+            .try_for_each(|(path, mode)| set_access(path, sid.as_mut_ptr() as *mut c_void, mode))
+    });
+    if let Err(err) = applied {
+        let _ = teardown_group(config);
+        return Err(err);
+    }
+    Ok(0)
+}
+
+/// Removes the group's entries from every path, then the group itself.
+pub fn teardown_group(config: &Config) -> Result<i32, String> {
+    let group = config.group.as_deref().ok_or("no group to tear down")?;
+    let name = wide(group);
+    let mut sid = account_sid(&name)?;
+    let mut failed = Vec::new();
+    for (path, _) in acl_entries(config) {
+        if let Err(err) = remove_access(path, sid.as_mut_ptr() as *mut c_void) {
+            failed.push(err);
+        }
+    }
+    let code = unsafe { NetLocalGroupDel(null(), name.as_ptr()) };
+    if let Err(err) = check(code, &format!("deleting the local group {group}")) {
+        failed.push(err);
+    }
+    if failed.is_empty() {
+        Ok(0)
+    } else {
+        Err(failed.join("; "))
+    }
+}
+
+/// Deletes every explicit allow and deny entry for `sid` on one path. `REVOKE_ACCESS` keeps the
+/// deny entries, so it cannot undo a `DENY_ACCESS`.
+fn remove_access(path: &str, sid: *mut c_void) -> Result<(), String> {
+    const ACCESS_ALLOWED_ACE_TYPE: u8 = 0;
+    const ACCESS_DENIED_ACE_TYPE: u8 = 1;
+    let wpath = wide(path);
+    let mut acl: *mut ACL = null_mut();
+    let mut descriptor: *mut c_void = null_mut();
+    check(
+        unsafe {
+            GetNamedSecurityInfoW(
+                wpath.as_ptr(),
+                SE_FILE_OBJECT,
+                DACL_SECURITY_INFORMATION,
+                null_mut(),
+                null_mut(),
+                &mut acl,
+                null_mut(),
+                &mut descriptor,
+            )
+        },
+        &format!("reading the ACL of {path}"),
+    )?;
+    let mut removed = false;
+    if !acl.is_null() {
+        for index in (0..unsafe { (*acl).AceCount } as u32).rev() {
+            let mut ace: *mut c_void = null_mut();
+            if unsafe { GetAce(acl, index, &mut ace) } == 0 {
+                continue;
+            }
+            let ace = ace as *mut ACCESS_ALLOWED_ACE;
+            let header = unsafe { (*ace).Header };
+            let ours = matches!(
+                header.AceType,
+                ACCESS_ALLOWED_ACE_TYPE | ACCESS_DENIED_ACE_TYPE
+            ) && u32::from(header.AceFlags) & INHERITED_ACE == 0
+                && unsafe { EqualSid(&raw mut (*ace).SidStart as *mut c_void, sid) } != 0;
+            if ours && unsafe { DeleteAce(acl, index) } != 0 {
+                removed = true;
+            }
+        }
+    }
+    let result = if removed {
+        check(
+            unsafe {
+                SetNamedSecurityInfoW(
+                    wpath.as_ptr(),
+                    SE_FILE_OBJECT,
+                    DACL_SECURITY_INFORMATION,
+                    null_mut(),
+                    null_mut(),
+                    acl,
+                    null_mut(),
+                )
+            },
+            &format!("setting the ACL of {path}"),
+        )
+    } else {
+        Ok(())
+    };
+    unsafe { LocalFree(descriptor as _) };
+    result
 }
