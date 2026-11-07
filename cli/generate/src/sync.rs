@@ -37,6 +37,8 @@ pub struct SyncReport {
     pub deleted: Vec<String>,
     /// Whether families were detected, i.e. the fast path missed.
     pub detected: bool,
+    /// One `dx: warning: ...` line per root reference to a `.dx` file dx does not render.
+    pub warnings: Vec<String>,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -126,12 +128,20 @@ fn record(root: &Path, text: &str) -> Result<(), SyncError> {
     dx_atomic_fs::write_atomic(&path, text.as_bytes()).map_err(io_error(&path))
 }
 
-/// Renders from `snapshot`, writes what differs and removes stale files. Returns the outputs.
-fn render_and_write(
+/// Every file a sync of `root` would leave in place, keyed by workspace-relative path, without
+/// writing anything.
+pub fn plan(
+    root: &Path,
+    detect: &mut dyn FnMut(&Path) -> BTreeSet<String>,
+) -> Result<BTreeMap<String, Vec<u8>>, SyncError> {
+    plan_from(root, &Snapshot::take(root)?, detect)
+}
+
+fn plan_from(
     root: &Path,
     snapshot: &Snapshot,
     detect: &mut dyn FnMut(&Path) -> BTreeSet<String>,
-) -> Result<(SyncReport, Vec<String>), SyncError> {
+) -> Result<BTreeMap<String, Vec<u8>>, SyncError> {
     let config = match &snapshot.config {
         None => None,
         Some(bytes) => {
@@ -154,7 +164,16 @@ fn render_and_write(
             text: build.text.clone(),
         }),
     };
-    let files = render(&inputs)?;
+    Ok(render(&inputs)?)
+}
+
+/// Renders from `snapshot`, writes what differs and removes stale files. Returns the outputs.
+fn render_and_write(
+    root: &Path,
+    snapshot: &Snapshot,
+    detect: &mut dyn FnMut(&Path) -> BTreeSet<String>,
+) -> Result<(SyncReport, Vec<String>), SyncError> {
+    let files = plan_from(root, snapshot, detect)?;
 
     let mut report = SyncReport {
         detected: true,
@@ -171,12 +190,67 @@ fn render_and_write(
         dx_atomic_fs::write_atomic(&path, bytes).map_err(io_error(&path))?;
         report.written.push(rel.clone());
     }
+    let mut keep: BTreeSet<&str> = files.keys().map(String::as_str).collect();
+    let mut kept_dirs = Vec::new();
+    for (file, paths) in &snapshot.dx_refs {
+        for path in paths {
+            let under = format!("{path}/");
+            if files.contains_key(path)
+                || files.keys().any(|rendered| rendered.starts_with(&under))
+                || user_owned(path)
+            {
+                continue;
+            }
+            let on_disk = root.join(path);
+            if on_disk.is_dir() {
+                kept_dirs.push(under);
+            } else if on_disk.is_file() {
+                keep.insert(path);
+                if let Some((dir, _)) = path.rsplit_once('/')
+                    && dir != dx_path::state::DX_DIR
+                {
+                    kept_dirs.push(format!("{dir}/"));
+                }
+            } else {
+                report.warnings.push(format!(
+                    "dx: warning: {file} references {path}, which does not exist"
+                ));
+                continue;
+            }
+            report.warnings.push(format!(
+                "dx: warning: {file} references {path}, which dx does not render; kept it"
+            ));
+        }
+    }
     let dx = dx_path::state::dx_dir(root);
     if dx.is_dir() {
-        let keep: BTreeSet<&str> = files.keys().map(String::as_str).collect();
-        remove_stale(&dx, dx_path::state::DX_DIR, &keep, &mut report.deleted)?;
+        let stale = Stale {
+            keep: &keep,
+            kept_dirs: &kept_dirs,
+        };
+        remove_stale(&dx, dx_path::state::DX_DIR, &stale, &mut report.deleted)?;
     }
     Ok((report, files.into_keys().collect()))
+}
+
+/// Whether `path` is under one of the [`KEPT`] entries.
+fn user_owned(path: &str) -> bool {
+    let rest = path.strip_prefix(".dx/").unwrap_or(path);
+    let top = rest.split('/').next().unwrap_or(rest);
+    KEPT.contains(&top)
+}
+
+/// What `remove_stale` leaves: rendered files, plus files a root config still names and the
+/// rest of their directory.
+struct Stale<'a> {
+    keep: &'a BTreeSet<&'a str>,
+    kept_dirs: &'a [String],
+}
+
+impl Stale<'_> {
+    fn keeps(&self, rel: &str) -> bool {
+        self.keep.contains(rel) || self.kept_dirs.iter().any(|dir| rel.starts_with(dir))
+    }
 }
 
 fn header(digest: &[u8; 32]) -> String {
@@ -187,12 +261,12 @@ fn is_not_found(error: &io::Error) -> bool {
     error.kind() == io::ErrorKind::NotFound
 }
 
-/// Deletes files under `dir` that are not in `keep`, then `dir` itself if that left it empty.
+/// Deletes files under `dir` that `keep` does not keep, then `dir` itself if that left it empty.
 /// Returns whether `dir` is now gone.
 fn remove_stale(
     dir: &Path,
     rel: &str,
-    keep: &BTreeSet<&str>,
+    keep: &Stale,
     deleted: &mut Vec<String>,
 ) -> Result<bool, SyncError> {
     let top = rel == dx_path::state::DX_DIR;
@@ -228,7 +302,7 @@ fn remove_stale(
         };
         if is_dir {
             empty &= remove_stale(&path, &child, keep, deleted)?;
-        } else if keep.contains(child.as_str()) {
+        } else if keep.keeps(&child) {
             empty = false;
         } else {
             match std::fs::remove_file(&path) {
@@ -256,6 +330,8 @@ struct Snapshot {
     root_files: BTreeSet<String>,
     root_build: Option<RootBuild>,
     root_texts: BTreeMap<String, String>,
+    /// The `.dx/` paths each root tool config names.
+    dx_refs: BTreeMap<String, Vec<String>>,
     files: BTreeSet<String>,
     /// (size, mtime) of each of [`SHARED_INPUTS`], taken before anything is read.
     stats: Vec<Option<(u64, u128)>>,
@@ -304,9 +380,32 @@ impl Snapshot {
                 Err(error) => return Err(io_error(&path)(error)),
             }
         }
+        let mut dx_refs = BTreeMap::new();
+        for name in TOOL_CONFIGS
+            .iter()
+            .flat_map(|config| config.files.iter())
+            .filter(|name| !name.contains('*'))
+        {
+            let path = root.join(name);
+            if dx_refs.contains_key(*name) || !path.is_file() {
+                continue;
+            }
+            let paths = match root_texts.get(*name) {
+                Some(text) => references::dx_paths(text),
+                None => match std::fs::read_to_string(&path) {
+                    Ok(text) => references::dx_paths(&text),
+                    Err(error) if error.kind() == io::ErrorKind::InvalidData => continue,
+                    Err(error) => return Err(io_error(&path)(error)),
+                },
+            };
+            if !paths.is_empty() {
+                dx_refs.insert((*name).to_owned(), paths);
+            }
+        }
         Ok(Snapshot {
             config,
             pins,
+            dx_refs,
             files: reference_files(root, &targets),
             root_files,
             root_build,
@@ -422,6 +521,11 @@ fn fingerprint(snapshot: &Snapshot, root: &Path, outputs: &[String]) -> [u8; 32]
     for (name, text) in &snapshot.root_texts {
         field(name.as_bytes());
         field(text.as_bytes());
+    }
+    field(&(snapshot.dx_refs.len() as u64).to_le_bytes());
+    for (name, paths) in &snapshot.dx_refs {
+        field(name.as_bytes());
+        field(paths.join("\n").as_bytes());
     }
     field(&(snapshot.files.len() as u64).to_le_bytes());
     for file in &snapshot.files {
