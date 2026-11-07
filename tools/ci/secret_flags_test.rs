@@ -1,5 +1,8 @@
 //! Keeps the remote cache key out of command lines, rc files and uploads.
 
+use std::path::Path;
+use std::process::Command;
+
 use serde_json::Value;
 
 use dx_testing::read_runfiles;
@@ -252,4 +255,109 @@ fn every_upload_follows_a_matching_scan() {
         }
     }
     assert!(uploads > 0, "no workflow with the key uploads anything");
+}
+
+fn run_script(dir: &Path, script: &str, env: &[(&str, &str)]) -> (i32, String) {
+    let mut command = Command::new("bash");
+    command.arg("-e").arg("-c").arg(script).current_dir(dir);
+    command
+        .env_clear()
+        .env("PATH", std::env::var("PATH").unwrap_or_default());
+    for (key, value) in env {
+        command.env(key, value);
+    }
+    let done = command.output().expect("run bash");
+    let mut output = String::from_utf8_lossy(&done.stdout).into_owned();
+    output.push_str(&String::from_utf8_lossy(&done.stderr));
+    (done.status.code().unwrap_or(-1), output)
+}
+
+fn assert_no_secret_printed(name: &str, output: &str) {
+    for secret in ["k3y", "s3cr3t"] {
+        assert!(!output.contains(secret), "{name} printed {secret}: {output}");
+    }
+}
+
+#[test]
+fn scan_finds_every_cache_secret() {
+    let step = named_step(SCAN_ACTION, SCAN_STEP);
+    let script = step["run"].as_str().expect("scan run");
+    let key = ("BUILDBUDDY_API_KEY", "k3y");
+    let header = ("REMOTE_CACHE_HEADER", "x-t=s3cr3t");
+    let empty = ("REMOTE_CACHE_HEADER", "x-t=");
+    let no_equals = ("REMOTE_CACHE_HEADER", "novalue");
+    let no_value = Some("has no value");
+    let cases: &[(&str, &[(&str, &str)], Option<&str>, i32, Option<&str>)] = &[
+        ("nothing set", &[], Some("k3y s3cr3t"), 0, None),
+        ("key found", &[key], Some("has k3y"), 1, None),
+        ("key clean", &[key], Some("clean"), 0, None),
+        ("header value found", &[header], Some("has s3cr3t"), 1, None),
+        ("header name only", &[header], Some("x-t"), 0, None),
+        ("header empty value", &[empty], Some("x"), 1, no_value),
+        ("header without =", &[no_equals], Some("x"), 1, no_value),
+        ("key with header", &[key, header], Some("has k3y"), 1, None),
+        ("path missing", &[key, header], None, 0, None),
+    ];
+    for (name, env, content, status, expected) in cases {
+        let dir = dx_test_scratch::scratch("secret-scan");
+        let upload = dir.path().join("upload");
+        if let Some(content) = content {
+            std::fs::create_dir(&upload).expect("create upload dir");
+            std::fs::write(upload.join("report.txt"), content).expect("write upload");
+        }
+        let upload = upload.to_str().expect("utf-8 path");
+        let mut env = env.to_vec();
+        env.push(("DX_UPLOAD_PATH", upload));
+        let (code, output) = run_script(dir.path(), script, &env);
+        assert_eq!(code, *status, "{name}: {output}");
+        if let Some(expected) = expected {
+            assert!(output.contains(expected), "{name}: {output}");
+        }
+        assert_no_secret_printed(name, &output);
+    }
+}
+
+#[test]
+fn scan_follows_symlinks() {
+    let step = named_step(SCAN_ACTION, SCAN_STEP);
+    let script = step["run"].as_str().expect("scan run");
+    let cases = [
+        ("link to a secret", "../outside.txt", None),
+        ("dangling link", "../missing", Some("failed")),
+    ];
+    for (name, target, expected) in cases {
+        let dir = dx_test_scratch::scratch("secret-scan-link");
+        let upload = dir.path().join("upload");
+        std::fs::create_dir(&upload).expect("create upload dir");
+        std::fs::write(dir.path().join("outside.txt"), "has k3y").expect("write outside");
+        std::os::unix::fs::symlink(target, upload.join("link")).expect("symlink");
+        let env = [
+            ("BUILDBUDDY_API_KEY", "k3y"),
+            ("DX_UPLOAD_PATH", upload.to_str().expect("utf-8 path")),
+        ];
+        let (code, output) = run_script(dir.path(), script, &env);
+        assert_eq!(code, 1, "{name}: {output}");
+        if let Some(expected) = expected {
+            assert!(output.contains(expected), "{name}: {output}");
+        }
+        assert_no_secret_printed(name, &output);
+    }
+}
+
+#[test]
+fn blanked_key_keeps_header_visible() {
+    let mut matched = 0;
+    for path in dx_testing::workflow_files() {
+        let document = parse(&path);
+        let key = document["env"]["BUILDBUDDY_API_KEY"].as_str().unwrap_or("");
+        if !key.contains("secrets.REMOTE_CACHE_HEADER") {
+            continue;
+        }
+        matched += 1;
+        assert_eq!(
+            document["env"]["REMOTE_CACHE_HEADER"], "${{ secrets.REMOTE_CACHE_HEADER }}",
+            "{path} blanks the key but does not pass the header to the scan"
+        );
+    }
+    assert!(matched > 0, "no workflow blanks the key for a header");
 }
