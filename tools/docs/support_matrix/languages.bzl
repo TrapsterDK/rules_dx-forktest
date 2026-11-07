@@ -155,6 +155,7 @@ DEAD_CODE = {
     "elixir": ["elixirc unused variable, unused function"],
     "erlang": ["erlc warn_unused_vars, warn_unused_function"],
     "fortran": ["fortitude C191 unreachable-statement"],
+    "fsharp": ["fsc FS1182 (--warnon:1182)"],
     "go": ["staticcheck U1000"],
     "haskell": ["ghc -Wunused-local-binds, -Wunused-matches (-Wall)"],
     "java": ["pmd UnusedLocalVariable, UnusedPrivateField, UnusedPrivateMethod, UnusedFormalParameter"],
