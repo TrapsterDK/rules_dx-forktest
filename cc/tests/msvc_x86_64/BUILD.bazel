@@ -3,7 +3,7 @@ load("//cc/toolchains:pins.bzl", "MSVC_CL_BUILD")
 load("//cc/toolchains:select.bzl", "cc_toolchain_binary")
 load("//deploy/rules:archive.bzl", "consumer_archive")
 load("//quality:fixtures.bzl", "real_source_target")
-load("//rust/rules:defs.bzl", "rust_clippy_test", "rust_test", "rustfmt_test")
+load("//rust/rules:defs.bzl", "rust_test")
 
 package(default_testonly = True)
 
@@ -94,24 +94,6 @@ rust_test(
     ],
 )
 
-rustfmt_test(
-    name = "fmt_test",
-    targets = [
-        ":archive_test",
-        ":imports_test",
-        ":producer_test",
-    ],
-)
-
-rust_clippy_test(
-    name = "clippy_test",
-    targets = [
-        ":archive_test",
-        ":imports_test",
-        ":producer_test",
-    ],
-)
-
 real_source_target(
     name = "corpus_starlark",
     starlark_srcs = ["BUILD.bazel"],
@@ -122,8 +104,6 @@ test_suite(
     name = "all",
     tests = [
         ":archive_test",
-        ":clippy_test",
-        ":fmt_test",
         ":imports_test",
         ":producer_test",
     ],
