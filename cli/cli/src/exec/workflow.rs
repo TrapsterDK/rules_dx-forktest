@@ -106,7 +106,7 @@ fn execute_checked(
     }
     let selection = match invocation.command {
         Command::Test => Some(SelectionContext::for_test_execution(
-            invocation.profile(),
+            invocation.build_mode(),
             invocation.raw_bazel_options(),
             &invocation.bazel_startup_options,
         )),
@@ -169,10 +169,10 @@ fn execute_checked(
         );
     };
     let bep_arg = Some(bep_text.as_str());
-    let profile = if verb == WorkflowVerb::Coverage {
+    let build_mode = if verb == WorkflowVerb::Coverage {
         None
     } else {
-        Some(invocation.profile())
+        Some(invocation.build_mode())
     };
     let mut bazel_options = invocation.quiet_bazel_options();
     if let Some(selection) = selection.as_ref().filter(|_| verb != WorkflowVerb::Build) {
@@ -189,7 +189,7 @@ fn execute_checked(
             }
         }
     }
-    let trace = if invocation.build_profile {
+    let trace = if invocation.timings {
         match prepare_trace(workspace, &run_id) {
             Ok(path) => {
                 bazel_options.push(format!("--profile={path}"));
@@ -215,7 +215,7 @@ fn execute_checked(
         &resolved,
         &bazel_options,
         bep_arg,
-        profile,
+        build_mode,
         &invocation.bazel_startup_options,
     ) {
         Ok(plan) => plan,
@@ -691,7 +691,7 @@ mod tests {
     }
 
     #[test]
-    fn build_profile_flags_reach_bazel_argv() {
+    fn build_mode_flags_reach_bazel_argv() {
         for (words, flag) in [
             (vec!["build"], "--config=dx_build_dev"),
             (vec!["build", "--debug"], "--config=dx_build_debug"),
@@ -711,7 +711,7 @@ mod tests {
     }
 
     #[test]
-    fn build_forwards_consumer_configs_and_rejects_conflicting_dx_profile() {
+    fn build_forwards_consumer_configs_and_rejects_conflicting_dx_build_mode() {
         let harness = Harness::new("build-consumer-config");
         let inv = invocation(&["build", "--", "--config=ci", "--config=sanitizer"]);
         let run = harness.probe_with(&inv, &[Some(0)]);
@@ -882,7 +882,7 @@ mod tests {
     }
 
     #[test]
-    fn test_filter_with_a_conflicting_profile_still_exits_usage() {
+    fn test_filter_with_a_conflicting_build_mode_still_exits_usage() {
         let harness = Harness::new("wf-rust-filter-conflict");
         let inv = invocation(&["test", "--", "--test_filter=x", "--config=dx_build_release"]);
         let mut err = Vec::new();
@@ -1221,7 +1221,7 @@ mod tests {
     }
 
     #[test]
-    fn test_file_scope_conflicting_profile_is_pre_exec() {
+    fn test_file_scope_conflicting_build_mode_is_pre_exec() {
         let harness = Harness::new("wf-test-conflict");
         harness.write_source("pkg/BUILD.bazel", "");
         harness.write_source("pkg/a.py", "x = 1\n");

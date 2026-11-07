@@ -163,7 +163,7 @@ fn strict_repeated_flags_are_last_wins() {
     assert!(parse(&strings(&["build", "-vv"])).expect("verbose").verbose);
     assert!(
         parse(&strings(&["build", "--debug", "--release"])).is_err(),
-        "repeatable flags must not weaken the profile conflict"
+        "repeatable flags must not weaken the build_mode conflict"
     );
 }
 
