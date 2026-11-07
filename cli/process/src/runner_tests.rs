@@ -99,7 +99,7 @@ fn cancellation_reports_through_on_stop() {
         .run_withdrawable(&argv, &cwd(), &[], &|| false)
         .expect("withdrawable");
     assert_eq!(withdrawable, Some(ChildStatus::signalled(None)));
-    let spec = stream_spec(&argv, &cwd(), &[], false, false, Vec::new());
+    let spec = stream_spec(&argv, &cwd(), &[], false, false, Vec::new(), true);
     assert_eq!(
         cancelling().stream(spec).expect("stream"),
         Some(ChildStatus::signalled(None))
@@ -109,25 +109,72 @@ fn cancellation_reports_through_on_stop() {
 #[test]
 fn stream_spec_follows_flags() {
     let argv = probe_argv(&[]);
-    let hermetic = stream_spec(&argv, &cwd(), &[("A", "b")], true, true, Vec::new());
+    let hermetic = stream_spec(&argv, &cwd(), &[("A", "b")], true, true, Vec::new(), true);
     assert!(matches!(hermetic.env, EnvPolicy::Controlled { .. }));
     assert!(matches!(hermetic.stdout, StreamOutput::Inherit));
     assert!(matches!(hermetic.stdin, StreamStdin::Inherit));
     assert!(matches!(hermetic.stderr, StreamOutput::Inherit));
-    let plain = stream_spec(&argv, &cwd(), &[], false, false, Vec::new());
+    let plain = stream_spec(&argv, &cwd(), &[], false, false, Vec::new(), true);
     assert!(matches!(plain.env, EnvPolicy::Inherited { .. }));
     assert!(matches!(plain.stdout, StreamOutput::Forward(_)));
+    let bazel = ["bazel".to_owned(), "run".to_owned()];
+    let _tail = stderr_tail::tail_lock();
+    let app = stream_spec(&bazel, &cwd(), &[], false, false, Vec::new(), false);
+    assert!(matches!(app.stderr, StreamOutput::Inherit));
 }
 
 #[test]
 fn bazel_stderr_is_teed_only_off_a_terminal() {
     use std::io::IsTerminal as _;
+    let _tail = stderr_tail::tail_lock();
     let teed = matches!(
-        bazel_stderr(&["bazel".to_owned()]),
+        bazel_stderr(&["bazel".to_owned()], true),
         StreamOutput::Forward(_)
     );
-    assert_eq!(teed, !std::io::stderr().is_terminal());
-    assert!(matches!(bazel_stderr(&[]), StreamOutput::Inherit));
+    let expected = stderr_tail::copy_on(
+        "bazel".as_ref(),
+        std::io::stderr().is_terminal(),
+        cfg!(unix),
+    );
+    assert_eq!(teed, expected);
+    assert!(matches!(bazel_stderr(&[], true), StreamOutput::Inherit));
+    assert!(matches!(
+        bazel_stderr(&["bazel".to_owned()], false),
+        StreamOutput::Inherit
+    ));
+}
+
+/// The probe copied under a Bazel-like name, so the runner treats it as Bazel.
+fn bazel_probe(dir: &Path) -> String {
+    let probe = PathBuf::from(&probe_argv(&[])[0]);
+    let mut copy = dir.join("bazel-probe");
+    if let Some(extension) = probe.extension() {
+        copy.set_extension(extension);
+    }
+    std::fs::copy(&probe, &copy).expect("copy probe");
+    copy.to_string_lossy().into_owned()
+}
+
+#[test]
+fn a_withdrawable_bazel_build_keeps_its_stderr() {
+    use std::io::IsTerminal as _;
+    let scratch = dx_test_scratch::scratch("dx-runner-bazel-tail");
+    let argv = [
+        bazel_probe(scratch.path()),
+        "--stderr-text=lockfile_mode=error".to_owned(),
+        "--exit-code=1".to_owned(),
+    ];
+    let _tail = stderr_tail::tail_lock();
+    stderr_tail::push(b"an earlier run");
+    let status = runner()
+        .run_withdrawable(&argv, &cwd(), &[], &|| false)
+        .expect("withdrawable");
+    assert_eq!(status.and_then(|status| status.code), Some(1));
+    let tail = stderr_tail::last_bazel_stderr();
+    assert!(!tail.contains("an earlier run"));
+    if !std::io::stderr().is_terminal() {
+        assert!(tail.contains("lockfile_mode=error"));
+    }
 }
 
 #[test]
