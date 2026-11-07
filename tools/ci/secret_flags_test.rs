@@ -274,7 +274,10 @@ fn run_script(dir: &Path, script: &str, env: &[(&str, &str)]) -> (i32, String) {
 
 fn assert_no_secret_printed(name: &str, output: &str) {
     for secret in ["k3y", "s3cr3t"] {
-        assert!(!output.contains(secret), "{name} printed {secret}: {output}");
+        assert!(
+            !output.contains(secret),
+            "{name} printed {secret}: {output}"
+        );
     }
 }
 
@@ -317,6 +320,7 @@ fn scan_finds_every_cache_secret() {
     }
 }
 
+#[cfg(unix)]
 #[test]
 fn scan_follows_symlinks() {
     let step = named_step(SCAN_ACTION, SCAN_STEP);
