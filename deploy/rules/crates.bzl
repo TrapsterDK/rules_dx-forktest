@@ -1,5 +1,6 @@
 """Local-first crates.io publisher for dx deploy."""
 
+load(":api_compat.bzl", "API_COMPAT_ATTRS", "api_compat_error", "api_compat_mode")
 load(":config.bzl", "DEPLOY_TOOL", "deploy_config", "rlocation_path")
 load(":defs.bzl", "dx_deployment")
 load(":validate.bzl", "ALNUM", "VERSION_CHARS", "only_chars")
@@ -39,7 +40,7 @@ def _crates_config_impl(ctx):
     semver_rloc = rlocation_path(ctx, semver_files[0]) if semver_files else ""
 
     crate_dir = ""
-    if ctx.attr.api_baseline == "git" and ctx.attr.api_compat:
+    if ctx.attr.api_baseline == "git" and ctx.attr.api_compat != "off":
         manifests = [f for f in crate_files if f.basename == "Cargo.toml"]
         if len(manifests) == 0:
             fail("crates_deploy " + str(ctx.label) + ": api_baseline = \"git\" needs a Cargo.toml in crate " +
@@ -60,7 +61,7 @@ def _crates_config_impl(ctx):
             "crate_dir": crate_dir,
             "crate_name": ctx.attr.crate_name,
             "api_baseline": ctx.attr.api_baseline,
-            "api_compat": "fail" if ctx.attr.api_compat else "off",
+            "api_compat": ctx.attr.api_compat,
             "crate_rlocs": rlocs,
             "semver_checks_rloc": semver_rloc,
             "version": ctx.attr.version,
@@ -71,16 +72,7 @@ def _crates_config_impl(ctx):
 _crates_config = rule(
     implementation = _crates_config_impl,
     doc = "Writes the deploy config for one crates.io deployment.",
-    attrs = {
-        "api_baseline": attr.string(
-            doc = "Where the previous release comes from: registry or git.",
-            values = ["registry", "git"],
-            default = "registry",
-        ),
-        "api_compat": attr.bool(
-            doc = "Fail a breaking public API change against the last release unless the bump is major.",
-            default = True,
-        ),
+    attrs = API_COMPAT_ATTRS | {
         "crate": attr.label(
             doc = "Crate target whose files are published by the deployment.",
             allow_files = True,
@@ -101,15 +93,12 @@ _crates_config = rule(
     },
 )
 
-def crates_deploy(name, crate, version = "0.0.0", build_mode = "release", api_compat = True, api_baseline = "registry", tags = [], sbom = None):
+def crates_deploy(name, crate, version = "0.0.0", build_mode = "release", api_compat = "fail", api_baseline = "registry", tags = [], sbom = None):
     """Publishes staged crate sources as a local-first crates.io deployment.
 
-    api_compat runs cargo-semver-checks against the last release; a breaking
-    change fails unless the version bump is major. It is on by default because
-    crates.io cannot yank a published API back.
-    api_baseline picks that release from the registry or from the previous
-    v<version> git tag; the git baseline needs a checked-in, standalone
-    Cargo.toml.
+    api_compat and api_baseline work as described under "Public API
+    compatibility" in the README; the tool is cargo-semver-checks, and the
+    git baseline needs a checked-in, standalone Cargo.toml.
     """
     name_error = crates_name_error(name)
     if name_error != "":
@@ -118,13 +107,16 @@ def crates_deploy(name, crate, version = "0.0.0", build_mode = "release", api_co
     if version_error != "":
         fail(version_error + " (in " + native.package_name() + ":" + name + ")")
 
+    api_error = api_compat_error("crates_deploy", api_compat, api_baseline)
+    if api_error != "":
+        fail(api_error + " (in " + native.package_name() + ":" + name + ")")
     config_target = name + "_config"
     _crates_config(
         name = config_target,
         crate = crate,
         crate_name = name,
         version = version,
-        api_compat = api_compat,
+        api_compat = api_compat_mode(api_compat),
         api_baseline = api_baseline,
         tags = tags,
     )
