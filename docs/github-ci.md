@@ -81,7 +81,7 @@ When the checkout is not a merge commit, scoped jobs warn and run `//...`. When 
    gh run download <run-id> -p 'dx-reports-*'
    ```
 
-   Artifacts are named `dx-reports-lint-<platform>`, `dx-reports-typecheck-<platform>`, `dx-reports-test-<platform>`, `dx-reports-build-<platform>` and `dx-reports-coverage-<platform>`, plus `-<invocation_id>` when set. They are kept 14 days. Reports carry test output and log tails. Treat them like logs.
+   Artifacts are named `dx-reports-lint-<platform>`, `dx-reports-typecheck-<platform>`, `dx-reports-test-<platform>`, `dx-reports-build-<platform>` and `dx-reports-coverage-<platform>`, plus `-<invocation_id>` when set. They are kept 3 days. Reports carry test output and log tails. Treat them like logs.
 
    The test and build artifacts also carry `profile-<check>.json`, the `dx --timings` report. The PR summary comment shows its cache hit rate, wall time and critical path per platform.
 
@@ -96,6 +96,8 @@ Common failures:
 | Skipped, cancelled or missing check | Rerun the pull request run. |
 
 ## Caches
+
+The reusable workflows write a credential helper that reads the key from the environment and pass it to Bazel. Callers only pass the secret. Do not put the key in `--remote_header` or any rc file.
 
 1. For BuildBuddy, set the `BUILDBUDDY_API_KEY` secret:
 
