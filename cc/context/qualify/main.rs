@@ -71,7 +71,10 @@ fn run(args: Vec<String>) -> Result<(), Error> {
         return Ok(());
     }
     let mut targets = Vec::new();
-    let mut flags: Vec<String> = Vec::new();
+    // The version probe runs the compiler itself, so its files must be on local disk: a
+    // remote cache hit would leave a remotely cached repository unmaterialized.
+    let mut flags =
+        vec!["--modify_execution_info=CppCompile=+no-remote,CppCompile=+no-cache".to_string()];
     let mut output = None;
     let mut bazel = "bazel".to_string();
     let mut compiler = None;
@@ -133,6 +136,10 @@ fn run(args: Vec<String>) -> Result<(), Error> {
         .bazel(&["info"], &["execution_root".to_string()])?
         .trim()
         .to_string();
+    let output_base = runner
+        .bazel(&["info"], &["output_base".to_string()])?
+        .trim()
+        .to_string();
 
     let mut graph = AqueryGraph::parse(&record)?;
     graph.retain_owned(&targets);
@@ -149,7 +156,11 @@ fn run(args: Vec<String>) -> Result<(), Error> {
     let bazel_version = runner.bazel(&["version"], &[])?;
     let banner = match commands.first().and_then(|c| c.arguments.first()) {
         Some(argv0) => {
-            let (program, args) = cc_context::version_probe(&PathBuf::from(&execroot), argv0);
+            let (program, args) = cc_context::version_probe(
+                &PathBuf::from(&execroot),
+                &PathBuf::from(&output_base),
+                argv0,
+            );
             let (out, err) = runner.exec(&program.to_string_lossy(), &args)?;
             format!("{out}{err}")
         }
