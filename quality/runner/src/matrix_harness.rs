@@ -869,19 +869,24 @@ pub fn runner_error_text(stderr: &str) -> Option<String> {
     Some(format!("{}\n", message.trim_end()))
 }
 
-/// Replaces each per-run scratch directory under `scratch_parent` with a stable token.
+/// Replaces each per-run scratch directory under `scratch_parent` with a stable token,
+/// spelling the rest of the path with forward slashes.
 pub fn normalize_scratch(text: &str, scratch_parent: &str) -> String {
-    let prefix = format!("{scratch_parent}/");
+    let flat = text.replace('\\', "/");
+    let prefix = format!("{}/", scratch_parent.replace('\\', "/").trim_end_matches('/'));
     let mut out = String::with_capacity(text.len());
-    let mut rest = text;
-    while let Some(start) = rest.find(&prefix) {
-        out.push_str(&rest[..start]);
+    let mut at = 0;
+    while let Some(found) = flat[at..].find(&prefix) {
+        let start = at + found;
+        out.push_str(&text[at..start]);
         out.push_str(SCRATCH_TOKEN);
-        let after = &rest[start + prefix.len()..];
-        let end = after.find(['/', ' ', ':', '\n']).unwrap_or(after.len());
-        rest = &after[end..];
+        let after = start + prefix.len();
+        let dir_end = flat[after..].find('/').map_or(flat.len(), |i| after + i);
+        let path_end = flat[dir_end..].find([' ', ':', '\n']).map_or(flat.len(), |i| dir_end + i);
+        out.push_str(&flat[dir_end..path_end]);
+        at = path_end;
     }
-    out.push_str(rest);
+    out.push_str(&text[at..]);
     out
 }
 
@@ -1020,6 +1025,20 @@ mod tests {
             "Error reading $SCRATCH/cfg/.clang-format: Unsuitable\n"
         );
         assert_eq!(normalize_scratch("no path\n", "/t/scratch"), "no path\n");
+        assert_eq!(
+            normalize_scratch(
+                "C:\\t\\scratch\\dx-scratch-Ab12\\matrix\\a.go:4:41: bad\n",
+                "C:\\t\\scratch"
+            ),
+            "$SCRATCH/matrix/a.go:4:41: bad\n"
+        );
+        assert_eq!(
+            normalize_scratch(
+                "x C:\\t\\scratch\\dx-scratch-Ab12\\m\\a.go:4: bad \\n\n",
+                "C:/t/scratch"
+            ),
+            "x $SCRATCH/m/a.go:4: bad \\n\n"
+        );
     }
 
     #[test]
