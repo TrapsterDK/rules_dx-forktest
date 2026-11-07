@@ -22,7 +22,7 @@ const PUBLIC_RUST_CRATES: [&str; 12] = [
     "dx_site_build",
     "dx_site_check",
     "dx_docs_typescript_extract",
-    "wasi_run",
+    "dx_docs_component_extract",
 ];
 
 struct Run {
@@ -190,8 +190,13 @@ fn markdown_is_rendered_not_dumped() {
         "the docs page must render a highlighted code block"
     );
     assert!(
-        docs_page.contains("<li>"),
-        "the docs page must render a list"
+        docs_page.contains("<table>"),
+        "the docs page must render a table"
+    );
+    let list_page = read(&root, "docs/cli/commands/completion.html");
+    assert!(
+        list_page.contains("<li>"),
+        "the completion page must render a list"
     );
     assert!(
         !docs_page.contains("```"),
