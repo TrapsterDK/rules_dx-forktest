@@ -185,6 +185,7 @@ rust_test(
         "//quality/tiers/pmd:standard.xml",
         "//quality/tools/lua:lua54.yml",
     ],
+    coverage_lib = ":quality_runner_lib",
     crate_name = "quality_runner",
     crate_root = "src/lib.rs",
     deps = all_crate_deps(
