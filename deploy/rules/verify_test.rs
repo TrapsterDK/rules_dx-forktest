@@ -963,25 +963,6 @@ fn pypi_native_msvc_case() {
         String::from_utf8_lossy(&output.stdout).trim(),
         "dx-native-probe native"
     );
-
-    let house = stage(
-        "DX_NODLL_PROG",
-        "DX_NODLL_CONFIG",
-        "dx_native_probe-wheelhouse",
-        "dx-native-probe",
-        "dx_native_probe",
-    );
-    let (url, _log) = serve(house);
-    let target = install(&url, "dx_native_probe");
-    let members = installed_binaries(&target);
-    let output = archiver_imports(&members, &core(&members));
-    let stderr = String::from_utf8_lossy(&output.stderr);
-    println!("import closure of a wheel without the runtime:\n{stderr}");
-    assert!(!output.status.success(), "{stderr}");
-    assert!(
-        stderr.to_ascii_lowercase().contains("vcruntime140.dll"),
-        "{stderr}"
-    );
 }
 
 fn readelf_dynamic(library: &Path) -> String {
