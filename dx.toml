@@ -1,0 +1,28 @@
+schema_version = 1
+tier = "strict"
+
+# Strict clippy (pedantic) and strict ruff flag thousands of findings in the existing code.
+[families.python]
+tier = "standard"
+
+[families.rust]
+tier = "standard"
+
+# Strict yamllint wants sorted keys and quoted strings across every workflow and config.
+[families.yaml]
+tier = "standard"
+
+# Strict PMD and detekt flag complexity and style rules across the doc tooling.
+[families.java]
+tier = "standard"
+
+[families.kotlin]
+tier = "standard"
+
+# Strict staticcheck wants a package comment in every Go package.
+[families.go]
+tier = "standard"
+
+# The strict fortitude tier selects OB001, which the pinned fortitude removed.
+[families.fortran]
+tier = "standard"
