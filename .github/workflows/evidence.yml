@@ -115,12 +115,6 @@ jobs:
             } > "$RUNNER_TEMP/evidence/executor.txt" 2>&1
             touch "$RUNNER_TEMP/executor.done"
           } &
-      - name: Fetch the dx dependencies
-        run: |
-          mkdir -p "$RUNNER_TEMP/evidence"
-          remote=()
-          [ -z "${BB_ARGS:-}" ] || read -ra remote <<< "--config=ci $BB_ARGS"
-          bazel fetch --noshow_progress "${remote[@]}" "--profile=$RUNNER_TEMP/evidence/fetch-profile.gz" --noslim_profile //cli/cli:dx
       - name: Build and qualify the release cell
         if: ${{ inputs.release_cell }}
         env:
@@ -237,21 +231,25 @@ jobs:
           DX_RELOCATE: ${{ steps.inputs.outputs.relocate }}
         run: |
           set -o pipefail
+          mkdir -p "$RUNNER_TEMP/evidence"
           read -ra patterns <<< "$DX_SCOPE"
           read -ra flags <<< "$DX_FLAGS"
           DX_HERMETIC_BAZELISK="$(command -v bazel)"
           export DX_HERMETIC_BAZELISK
           startup=()
           extra=()
+          downloads=()
+          # The determinism check reads outputs from the execution root, so only a plain run leaves them remote.
+          [ "$DX_RELOCATE" = true ] || downloads=(--remote_download_minimal "--remote_download_regex=.*/testlogs/.*")
           profile=("--profile=$RUNNER_TEMP/evidence/profile.gz" --noslim_profile)
           run_task() {
             log="$1"
             if [ "$DX_TASK" = "build" ]; then
-              bazel "${startup[@]}" build --noshow_progress "${profile[@]}" "${extra[@]}" "${patterns[@]}" "${flags[@]}" 2>&1 | tee "$log"
+              bazel "${startup[@]}" build --noshow_progress "${profile[@]}" "${downloads[@]}" "${extra[@]}" "${patterns[@]}" "${flags[@]}" 2>&1 | tee "$log"
             elif [ "$DX_TASK" = "coverage" ]; then
               bazel run --noshow_progress "${profile[@]}" //cli/cli:dx -- coverage --min-coverage 100 "${patterns[@]}" ${flags[@]:+-- "${flags[@]}"} 2>&1 | tee "$log"
             else
-              bazel "${startup[@]}" test --keep_going --noshow_progress "${profile[@]}" --nozip_undeclared_test_outputs --test_output=errors --test_timeout="$DX_TEST_TIMEOUT" "--test_env=DX_HERMETIC_BAZELISK=$DX_HERMETIC_BAZELISK" "${extra[@]}" "${patterns[@]}" "${flags[@]}" 2>&1 | tee "$log"
+              bazel "${startup[@]}" test --keep_going --noshow_progress "${profile[@]}" --nozip_undeclared_test_outputs --test_output=errors --test_timeout="$DX_TEST_TIMEOUT" "--test_env=DX_HERMETIC_BAZELISK=$DX_HERMETIC_BAZELISK" "${downloads[@]}" "${extra[@]}" "${patterns[@]}" "${flags[@]}" 2>&1 | tee "$log"
             fi
           }
           run_task evidence.log
