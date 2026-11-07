@@ -25,7 +25,6 @@
      dx:
        uses: devhusdk/rules_dx/.github/workflows/reusable-consumer.yml@<commit>
        with:
-         disabled_checks: ""
          platforms: '["linux_x86_64"]'
        secrets:
          BUILDBUDDY_API_KEY: ${{ secrets.BUILDBUDDY_API_KEY }}
@@ -65,7 +64,7 @@ Per platform, `checks (<platform>)` runs these in order. A failing check does no
 | `build` | `dx build` | `failures.json` |
 | `coverage` | `dx coverage` | `failures.json`, `results.json` |
 
-`security-audit` runs `dx security //...` in its own job per platform. `validate (inputs)` checks the inputs first. `advisory snapshots (one run, every platform)` prepares the advisory snapshots once for all platforms. With `advisory_pr`, `advisory pin bump` opens the advisory pin pull request. `fuzz` and `bench` run when their inputs are set. `dx-ci (aggregate)` reports the result of the required jobs.
+`security-audit` runs `dx security //...` in its own job per platform. `validate (inputs)` checks the inputs first. `advisory snapshots (one run, every platform)` prepares the advisory snapshots once for all platforms. With `advisory_pr`, `advisory pin bump` opens the advisory pin pull request. `fuzz` and `bench` run when their inputs are set. `dx-ci (aggregate)` reports the result of the required jobs. Every check runs on every call; a skipped required job fails `dx-ci`. To turn a tool off, set it in the quality policy's `families` (see [quality](cli/commands/quality.md)), so CI and local runs agree.
 
 On pull requests, `lint`, `typecheck`, `format`, `test`, `build` and `coverage` run with `--affected`. Other events use `//...`. `coverage` uses `//...` when `min_coverage` or `min_changed_line_coverage` is set. Set `affected_on_pr: false` to use `//...` on pull requests.
 
@@ -144,7 +143,6 @@ Bazel downloads and Bazelisk are fetched fresh in each job.
 
 | Input | Meaning |
 |---|---|
-| `disabled_checks` | Comma-separated checks to skip: `lint`, `typecheck`, `format`, `generate`, `security-audit`, `license-audit`, `test`, `build`, `coverage`. Empty runs all. |
 | `platforms` | JSON array. Default `["linux_x86_64"]`. Values: `linux_x86_64`, `linux_arm64`, `macos_arm64`, `windows_x86_64`, `windows_arm64`. |
 | `min_coverage` | Whole number 0 to 100. Fails below it. Empty sets no threshold. |
 | `min_changed_line_coverage` | Whole number 0 to 100. Pull requests only. Fails when fewer of the added executable lines are covered. Empty skips it. |
@@ -153,11 +151,13 @@ Bazel downloads and Bazelisk are fetched fresh in each job.
 | `link_check_online` | Default `false`. Run `lint` with `--online` so lychee checks external links. Ignored on pull requests; call the workflow from a `schedule` trigger to use it. |
 | `fuzz` | Default `false`. Run [`dx fuzz`](cli/commands/fuzz.md) on `dx-fuzz` targets on Linux x86_64. The corpus under `.dx/local/fuzz` is cached between runs. A crash fails the job and uploads the `dx-fuzz-crashes` artifact for 30 days; the log shows the reproduce line. |
 | `fuzz_time` | Default `300s`. Time budget per fuzz target: `90s`, `5m` or `1h`. |
-| `bench` | Default `false`. Run [`dx bench`](cli/commands/bench.md) on Linux x86_64. Pushes to the default branch upload `.dx/local/bench/last.json` as the `dx-bench-linux_x86_64` artifact for 90 days. Pull requests run `dx bench --compare <base branch> --max-regression=<bench_regression_pct>` and add the table to the job summary. |
-| `bench_regression_pct` | Default `20`. Percent a benchmark may be slower than the base branch before a pull request fails. |
+| `bench` | Default `false`. Run [`dx bench`](cli/commands/bench.md) on Linux x86_64. Pushes to the default branch upload `.dx/local/bench/last.json` as the `dx-bench-linux_x86_64` artifact for 90 days. Pull requests run `dx bench --compare <base branch> --max-regression=<bench_max_regression>` and add the table to the job summary. |
+| `bench_max_regression` | Default `20`. Percent a benchmark may be slower than the base branch before a pull request fails. |
 | `remote_cache` | REAPI cache URL. |
 | `advisory_pr` | Default `false`. Run `dx update advisory --pr`, which opens or refreshes the `dx-update/advisory` pull request that moves the advisory pins in `.dx/pins` to the newest snapshot release. Call the workflow from a `schedule` trigger with `contents: write` and `pull-requests: write` permissions. |
 | `invocation_id` | 1 to 40 letters, digits, underscores or hyphens. Set one per call when a run has several calls. |
+
+The `disabled_checks` input is gone. Callers must delete `disabled_checks` from their `with:` block, or the call fails with an undefined-input error.
 
 Changed-line coverage runs `dx coverage --min-changed-line-coverage <percent>`. See [Build, test, coverage](cli/commands/build-test-coverage.md) for output lines and error codes.
 
