@@ -13,6 +13,7 @@ load(
     "native_config_extension",
     "native_config_extensions",
     "native_config_scratch_rel",
+    "tier_base_dirs",
 )
 
 _HINTS = [
@@ -49,6 +50,14 @@ def native_config_unit_tests(name):
         name = name,
         mode = "unit",
         checks = [
+            expect_equal(
+                "tier_base_dirs binds file tools with tier targets only",
+                [
+                    [tool in tier_base_dirs() for tool in ["actionlint", "clippy", "prettier", "kubeconform", "bicep", "ruff"]],
+                    len(tier_base_dirs()),
+                ],
+                [[False, False, False, False, False, True], 57],
+            ),
             expect_equal(
                 "native_config_scratch_rel keeps in-repo paths and remaps external ones",
                 [
@@ -232,7 +241,7 @@ def native_config_unit_tests(name):
                 "native_config_error rejects an unknown tool",
                 native_config_error("nope", "x.json", True, []),
                 "native_config: unknown tool 'nope': want one of " +
-                "ansible_lint, bicep, biome, buf, buildifier, cfn_lint, checkmake, checkstyle, clang_format, clang_tidy, cmakelint, cppcheck, credo, csharpier, dart, deadnix, detekt, djlint, elvis, errcheck, eslint, ffmt, fortitude, fsharplint, gersemi, govet, gplint, graphql_eslint, hadolint, hlint, julialint, kubeconform, latexindent, luals, markdown_check, mbake, perlcritic, phpcs, phpstan, pmd, prettier, psscriptanalyzer, pydoclint, qmlformat, qmllint, redocly, regal, remark, roslyn, rubocop, ruff, rustfmt, scalafix, scalafmt, selene, shellcheck, sqlfluff, staticcheck, stylelint, stylua, swift_format, swift_lint, taplo, tflint, trivy_config, ty, vale, yamlfmt, yamllint, zanuda, zizmor",
+                "ansible_lint, bicep, biome, buf, buildifier, cfn_lint, checkmake, checkstyle, clang_format, clang_tidy, cmakelint, cppcheck, credo, csharpier, dart, deadnix, detekt, djlint, elvis, errcheck, eslint, ffmt, fortitude, fsharplint, gersemi, govet, gplint, graphql_eslint, hadolint, hlint, julialint, kubeconform, latexindent, luals, markdown_check, mbake, perlcritic, phpcs, phpstan, pmd, prettier, psscriptanalyzer, pydoclint, qmlformat, qmllint, redocly, regal, remark, roslyn, rubocop, ruff, rustfmt, scalafix, scalafmt, selene, shellcheck, spotbugs, sqlfluff, staticcheck, stylelint, stylua, swift_format, swift_lint, taplo, tflint, trivy_config, ty, vale, yamlfmt, yamllint, zanuda, zizmor",
             ),
             expect_equal(
                 "native_config_error requires a config",
@@ -353,12 +362,12 @@ def native_config_unit_tests(name):
             expect_equal(
                 "missing_required_config_error names an unbound buildifier lint stage",
                 missing_required_config_error("buildifier", "lint", {}, "//q:t"),
-                "Buildifier needs a config. Declare buildifier_config(name = \"buildifier_config\", src = \".buildifier.json\") from @rules_dx//quality:native_config.bzl and list it in your workspace_policy configs or add aspect_hints = [\":buildifier_config\"], or tag the target no-lint.",
+                "Buildifier needs a config. Declare buildifier_config(name = \"buildifier_config\", src = \".buildifier.json\") from @rules_dx//quality:native_config.bzl and list it in your dx_generated_policy configs or add aspect_hints = [\":buildifier_config\"], or tag the target no-lint.",
             ),
             expect_equal(
                 "missing_required_config_error uses the tool hint for kubeconform",
                 missing_required_config_error("kubeconform", "lint", {}, "//q:t"),
-                "kubeconform needs a config. Declare kubernetes_schemas(name = \"kubernetes_schemas\", kubernetes_version = \"1.32.0\", schemas = [...]) from @rules_dx//kubernetes/rules:defs.bzl and list it in your workspace_policy configs or add aspect_hints = [\":kubernetes_schemas\"], or tag the target no-lint.",
+                "kubeconform needs a config. Declare kubernetes_schemas(name = \"kubernetes_schemas\", kubernetes_version = \"1.32.0\", schemas = [...]) from @rules_dx//kubernetes/rules:defs.bzl and list it in your dx_generated_policy configs or add aspect_hints = [\":kubernetes_schemas\"], or tag the target no-lint.",
             ),
             expect_equal(
                 "collect_native_configs resolves helm through the kubeconform hint",
@@ -373,7 +382,7 @@ def native_config_unit_tests(name):
             expect_equal(
                 "missing_required_config_error names kubernetes_schemas for helm",
                 missing_required_config_error("helm", "lint", {}, "//q:t"),
-                "helm needs a config. Declare kubernetes_schemas(name = \"kubernetes_schemas\", kubernetes_version = \"1.32.0\", schemas = [...]) from @rules_dx//kubernetes/rules:defs.bzl and list it in your workspace_policy configs or add aspect_hints = [\":kubernetes_schemas\"], or tag the target no-lint. helm validates its rendered manifests with the same schemas.",
+                "helm needs a config. Declare kubernetes_schemas(name = \"kubernetes_schemas\", kubernetes_version = \"1.32.0\", schemas = [...]) from @rules_dx//kubernetes/rules:defs.bzl and list it in your dx_generated_policy configs or add aspect_hints = [\":kubernetes_schemas\"], or tag the target no-lint. helm validates its rendered manifests with the same schemas.",
             ),
             expect_equal(
                 "native_config rejects helm as a tool id",
@@ -383,22 +392,22 @@ def native_config_unit_tests(name):
             expect_equal(
                 "missing_required_config_error names an unbound checkstyle lint stage",
                 missing_required_config_error("checkstyle", "lint", {}, "//q:t"),
-                "Checkstyle needs a config. Declare checkstyle_config(name = \"checkstyle_config\", src = \"checkstyle.xml\") from @rules_dx//quality:native_config.bzl and list it in your workspace_policy configs or add aspect_hints = [\":checkstyle_config\"], or tag the target no-lint.",
+                "Checkstyle needs a config. Declare checkstyle_config(name = \"checkstyle_config\", src = \"checkstyle.xml\") from @rules_dx//quality:native_config.bzl and list it in your dx_generated_policy configs or add aspect_hints = [\":checkstyle_config\"], or tag the target no-lint.",
             ),
             expect_equal(
                 "missing_required_config_error names an unbound vale lint stage",
                 missing_required_config_error("vale", "lint", {}, "//q:t"),
-                "Vale needs a config. Declare vale_config(name = \"vale_config\", src = \".vale.ini\") from @rules_dx//quality:native_config.bzl and list it in your workspace_policy configs or add aspect_hints = [\":vale_config\"], or tag the target no-lint.",
+                "Vale needs a config. Declare vale_config(name = \"vale_config\", src = \".vale.ini\") from @rules_dx//quality:native_config.bzl and list it in your dx_generated_policy configs or add aspect_hints = [\":vale_config\"], or tag the target no-lint.",
             ),
             expect_equal(
                 "missing_required_config_error names an unbound ruff format stage",
                 missing_required_config_error("ruff", "format", {}, "//q:t"),
-                "Ruff needs a config. Declare ruff_config(name = \"ruff_config\", src = \"ruff.toml\") from @rules_dx//quality:native_config.bzl and list it in your workspace_policy configs or add aspect_hints = [\":ruff_config\"], or tag the target no-format.",
+                "Ruff needs a config. Declare ruff_config(name = \"ruff_config\", src = \"ruff.toml\") from @rules_dx//quality:native_config.bzl and list it in your dx_generated_policy configs or add aspect_hints = [\":ruff_config\"], or tag the target no-format.",
             ),
             expect_equal(
                 "missing_required_config_error names an unbound ruff lint stage",
                 missing_required_config_error("ruff", "lint", {}, "//q:t"),
-                "Ruff needs a config. Declare ruff_config(name = \"ruff_config\", src = \"ruff.toml\") from @rules_dx//quality:native_config.bzl and list it in your workspace_policy configs or add aspect_hints = [\":ruff_config\"], or tag the target no-lint.",
+                "Ruff needs a config. Declare ruff_config(name = \"ruff_config\", src = \"ruff.toml\") from @rules_dx//quality:native_config.bzl and list it in your dx_generated_policy configs or add aspect_hints = [\":ruff_config\"], or tag the target no-lint.",
             ),
             expect_equal(
                 "missing_required_config_error names an unbound biome format stage",
@@ -408,12 +417,12 @@ def native_config_unit_tests(name):
             expect_equal(
                 "missing_required_config_error names an unbound biome lint stage",
                 missing_required_config_error("biome", "lint", {}, "//q:t"),
-                "Biome needs a config. Declare biome_config(name = \"biome_config\", src = \"biome.json\") from @rules_dx//quality:native_config.bzl and list it in your workspace_policy configs or add aspect_hints = [\":biome_config\"], or tag the target no-lint.",
+                "Biome needs a config. Declare biome_config(name = \"biome_config\", src = \"biome.json\") from @rules_dx//quality:native_config.bzl and list it in your dx_generated_policy configs or add aspect_hints = [\":biome_config\"], or tag the target no-lint.",
             ),
             expect_equal(
                 "missing_required_config_error names an unbound eslint lint stage",
                 missing_required_config_error("eslint", "lint", {}, "//q:t"),
-                "ESLint needs a config. Declare eslint_config(name = \"eslint_config\", src = \"eslint.config.mjs\") from @rules_dx//quality:native_config.bzl and list it in your workspace_policy configs or add aspect_hints = [\":eslint_config\"], or tag the target no-lint.",
+                "ESLint needs a config. Declare eslint_config(name = \"eslint_config\", src = \"eslint.config.mjs\") from @rules_dx//quality:native_config.bzl and list it in your dx_generated_policy configs or add aspect_hints = [\":eslint_config\"], or tag the target no-lint.",
             ),
             expect_equal(
                 "missing_required_config_error names an unbound scalafmt format stage",
@@ -443,7 +452,7 @@ def native_config_unit_tests(name):
             expect_equal(
                 "missing_required_config_error names an unbound graphql_eslint lint stage",
                 missing_required_config_error("graphql_eslint", "lint", {}, "//q:t"),
-                "graphql-eslint needs a config. Declare graphql_eslint_config(name = \"graphql_eslint_config\", src = \"graphql_lint.json\") from @rules_dx//quality:native_config.bzl and list it in your workspace_policy configs or add aspect_hints = [\":graphql_eslint_config\"], or tag the target no-lint.",
+                "graphql-eslint needs a config. Declare graphql_eslint_config(name = \"graphql_eslint_config\", src = \"graphql_lint.json\") from @rules_dx//quality:native_config.bzl and list it in your dx_generated_policy configs or add aspect_hints = [\":graphql_eslint_config\"], or tag the target no-lint.",
             ),
             expect_equal(
                 "every tool the runner refuses without a config is required here",

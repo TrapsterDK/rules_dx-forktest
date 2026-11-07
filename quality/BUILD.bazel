@@ -145,24 +145,50 @@ policy_subject(
     policy = ":fixture_disable_policy",
 )
 
-quality_family(
-    name = "strict_python_family",
-    family_id = "python",
-    lint = ["lint-a"],
-    profile = "strict",
-)
-
 dx_generated_policy(
     name = "fixture_generated_policy",
     bases = {"ruff": "//quality/tiers/ruff:strict"},
     configs = [":corpus_vale_config"],
-    families = [":strict_python_family"],
+    defaults = False,
+    families = {
+        "python": {
+            "lint": ["lint-a"],
+            "profile": "strict",
+        },
+    },
     profile = "standard",
 )
 
 policy_subject(
     name = "generated_policy_under_test",
     policy = ":fixture_generated_policy",
+)
+
+dx_generated_policy(
+    name = "fixture_strict_generated_policy",
+    defaults = False,
+    families = {"python": {"lint": ["lint-a"]}},
+    profile = "strict",
+)
+
+policy_subject(
+    name = "strict_generated_policy_under_test",
+    policy = ":fixture_strict_generated_policy",
+)
+
+dx_generated_policy(
+    name = "fixture_merged_generated_policy",
+    families = {"python": {"lint": ["ruff"]}},
+    profile = "standard",
+)
+
+policy_subject(
+    name = "merged_generated_policy_under_test",
+    family_ids = [
+        "python",
+        "rust",
+    ],
+    policy = ":fixture_merged_generated_policy",
 )
 
 policy_unit_tests(name = "policy_unit")
