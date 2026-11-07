@@ -1004,6 +1004,18 @@ fn remote_repo_contents_cache_comes_from_setup_bazel() {
 }
 
 #[test]
+fn evidence_checks_out_in_parallel_on_windows() {
+    let evidence = read_runfiles(".github/workflows/evidence.yml");
+    let checkout = evidence
+        .find("actions/checkout@")
+        .expect("evidence.yml has no checkout step");
+    let workers = evidence
+        .find("checkout.workers 0")
+        .expect("evidence.yml lost checkout.workers 0");
+    assert!(workers < checkout, "checkout.workers must be set before actions/checkout");
+}
+
+#[test]
 fn the_scalafmt_default_pins_the_version_the_toolchain_downloads() {
     let version_of = |text: &str| {
         text.lines()
