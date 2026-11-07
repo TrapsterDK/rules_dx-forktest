@@ -210,6 +210,9 @@
       ],
       "bazel_deps": [
         "apple_support",
+        "aspect_rules_jest",
+        "aspect_rules_js",
+        "aspect_rules_ts",
         "bazel_features",
         "bazel_lib",
         "bazel_skylib",
@@ -237,6 +240,7 @@
       "dirs": [
         "ansible",
         "asciidoc",
+        "astro",
         "bcr_test_module",
         "bicep",
         "cc",
@@ -259,10 +263,12 @@
         "go",
         "helm",
         "java",
+        "javascript",
         "kotlin",
         "kubernetes",
         "libs",
         "make",
+        "mdx",
         "modules",
         "patches",
         "qt",
@@ -271,9 +277,12 @@
         "rst",
         "scala",
         "sql",
+        "svelte",
         "terraform",
         "third_party",
-        "tools"
+        "tools",
+        "typescript",
+        "vue"
       ],
       "extensions": [
         "//cc/toolchains/msvc:repos.bzl%msvc",
@@ -286,10 +295,15 @@
         "//elixir/toolchain:repos.bzl%elixir",
         "//erlang/toolchain:repos.bzl%erlang",
         "//gazelle/dispatch:extension.bzl%dx_gazelle",
+        "//javascript/private:dev_hub.bzl%dx_dev_hub",
         "//quality/artifacts:extension.bzl%dx_tools",
         "//third_party/dotnet:extension.bzl%paket",
         "//tools/bazelrc:repos.bzl%bazel_version",
+        "//typescript/playwright:repos.bzl%playwright",
         "@apple_support//crosstool:setup.bzl%apple_cc_configure_extension",
+        "@aspect_rules_js//npm:extensions.bzl%npm",
+        "@aspect_rules_js//npm:extensions.bzl%pnpm",
+        "@aspect_rules_ts//ts:extensions.bzl%typescript",
         "@gazelle//:extensions.bzl%go_deps",
         "@llvm//extensions:osx.bzl%osx",
         "@rules_go//go:extensions.bzl%go_sdk",
@@ -333,6 +347,7 @@
         ".yml"
       ],
       "gazelle": [
+        "//gazelle/astro",
         "//gazelle/cc",
         "//gazelle/csharp",
         "//gazelle/elixir",
@@ -340,8 +355,13 @@
         "//gazelle/fsharp",
         "//gazelle/go",
         "//gazelle/java",
+        "//gazelle/javascript",
         "//gazelle/kotlin",
-        "//gazelle/scala"
+        "//gazelle/mdx",
+        "//gazelle/scala",
+        "//gazelle/svelte",
+        "//gazelle/typescript",
+        "//gazelle/vue"
       ],
       "repo_rules": [
         "//quality/artifacts/hub_test:repos.bzl%hub_fixture_repo",
@@ -611,24 +631,24 @@
         "real_js_typecheck_probe_aspect"
       ],
       "bazel_deps": [
-        "aspect_rules_jest",
         "aspect_rules_js",
-        "aspect_rules_ts"
+        "aspect_rules_ts",
+        "bazel_skylib",
+        "platforms",
+        "protobuf",
+        "rules_dx",
+        "rules_shell"
       ],
       "dirs": [
-        "astro",
+        "bcr_test_module",
         "javascript",
-        "mdx",
-        "svelte",
-        "typescript",
-        "vue"
+        "third_party",
+        "typescript"
       ],
       "extensions": [
-        "//javascript/private:dev_hub.bzl%dx_dev_hub",
-        "//typescript/playwright:repos.bzl%playwright",
         "@aspect_rules_js//npm:extensions.bzl%npm",
-        "@aspect_rules_js//npm:extensions.bzl%pnpm",
-        "@aspect_rules_ts//ts:extensions.bzl%typescript"
+        "@aspect_rules_ts//ts:extensions.bzl%typescript",
+        "@rules_dx//quality/artifacts:extension.bzl%dx_tools"
       ],
       "file_extensions": [
         ".astro",
@@ -642,16 +662,11 @@
         ".tsx",
         ".vue"
       ],
-      "gazelle": [
-        "//gazelle/astro",
-        "//gazelle/javascript",
-        "//gazelle/mdx",
-        "//gazelle/svelte",
-        "//gazelle/typescript",
-        "//gazelle/vue"
-      ],
+      "gazelle": [],
       "repo_rules": [],
-      "toolchains": []
+      "toolchains": [],
+      "module": "rules_dx_js",
+      "path": "families/js"
     },
     "julia": {
       "aspects": [
