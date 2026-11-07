@@ -44,6 +44,10 @@ const RUFF_FORMAT_SUBCOMMAND: &[&str] = &["format"];
 const RUFF_HERMETIC_TAIL: &[&str] = &["--no-cache", "--no-respect-gitignore"];
 const RUFF_CHECK_TAIL: &[&str] = &["--output-format", "json"];
 const RUFF_FIX_TAIL: &[&str] = &["--fix"];
+/// Ruff marks some fixes unsafe because they can change behavior; they apply only with this flag.
+const RUFF_UNSAFE_FIX_TAIL: &[&str] = &["--unsafe-fixes"];
+const ANSIBLE_LINT_SAFE_FIX: &str = "--fix=yaml,key-order,jinja";
+const ANSIBLE_LINT_UNSAFE_FIX: &str = "--fix=all";
 const RUFF_FORMAT_CHECK_TAIL: &[&str] = &["--check", "--output-format", "json"];
 /// Config discovery, the git ignore rules and the default excludes are all off, and
 /// `--force-exclude` stays off: with it an explicit file under a directory such as `build/` is
@@ -81,6 +85,8 @@ const BIOME_FORMAT_SUBCOMMAND: &[&str] = &["format"];
 const BIOME_BASE_TAIL: &[&str] = &["--reporter=json", "--colors=off", "--config-path"];
 const BIOME_LINT_TAIL: &[&str] = &["--error-on-warnings", "--vcs-enabled=false"];
 const BIOME_FORMAT_FIX_TAIL: &[&str] = &["--write"];
+const BIOME_LINT_FIX_TAIL: &[&str] = &["--write", "--vcs-enabled=false"];
+const BIOME_UNSAFE_FIX_TAIL: &[&str] = &["--unsafe"];
 const ESLINT_MIDDLE: &[&str] = &["-f", "json"];
 const ESLINT_FIX_SUFFIX: &[&str] = &["-f", "json", "--fix"];
 const PRETTIER_NO_EDITORCONFIG: &str = "--no-editorconfig";
@@ -300,6 +306,8 @@ const RUBOCOP_FORMAT_CHECK_ARGS: &[&str] = &[
     "--display-only-correctable",
 ];
 const RUBOCOP_FORMAT_FIX_ARGS: &[&str] = &["--fix-layout", "--cache", "false"];
+const RUBOCOP_SAFE_FIX_ARGS: &[&str] = &["--autocorrect", "--cache", "false"];
+const RUBOCOP_UNSAFE_FIX_ARGS: &[&str] = &["--autocorrect-all", "--cache", "false"];
 const YAMLLINT_PREFIX: &[&str] = &["-f", "parsable"];
 const SHELLCHECK_ARGS: &[&str] = &["--format=gcc"];
 const SHELLCHECK_NORC: &[&str] = &["--norc"];
@@ -630,9 +638,13 @@ pub fn ruff_fix(
     files: &[&Path],
     config: Option<&Path>,
     cwd_rel: &str,
+    unsafe_fixes: bool,
 ) -> Invocation {
     let mut head = ruff_base(binary, RUFF_CHECK_SUBCOMMAND[0], config, files);
     head.extend(RUFF_FIX_TAIL.iter().map(OsString::from));
+    if unsafe_fixes {
+        head.extend(RUFF_UNSAFE_FIX_TAIL.iter().map(OsString::from));
+    }
     assemble(binary, head, files, cwd_rel)
 }
 
@@ -726,6 +738,20 @@ pub fn biome_format_check(binary: &Path, files: &[&Path], config_dir: &Path) -> 
 pub fn biome_format_fix(binary: &Path, files: &[&Path], config_dir: &Path) -> Invocation {
     let mut head = biome_base(binary, BIOME_FORMAT_SUBCOMMAND[0], config_dir);
     head.extend(BIOME_FORMAT_FIX_TAIL.iter().map(OsString::from));
+    assemble(binary, head, files, "")
+}
+
+pub fn biome_lint_fix(
+    binary: &Path,
+    files: &[&Path],
+    config_dir: &Path,
+    unsafe_fixes: bool,
+) -> Invocation {
+    let mut head = biome_base(binary, BIOME_LINT_SUBCOMMAND[0], config_dir);
+    head.extend(BIOME_LINT_FIX_TAIL.iter().map(OsString::from));
+    if unsafe_fixes {
+        head.extend(BIOME_UNSAFE_FIX_TAIL.iter().map(OsString::from));
+    }
     assemble(binary, head, files, "")
 }
 
@@ -2324,6 +2350,21 @@ pub fn rubocop_format_fix(binary: &Path, files: &[&Path], config: Option<&Path>)
     )
 }
 
+/// `--autocorrect` applies only the cops rubocop marks safe; `--autocorrect-all` adds the unsafe ones.
+pub fn rubocop_lint_fix(
+    binary: &Path,
+    files: &[&Path],
+    config: Option<&Path>,
+    unsafe_fixes: bool,
+) -> Invocation {
+    let args = if unsafe_fixes {
+        RUBOCOP_UNSAFE_FIX_ARGS
+    } else {
+        RUBOCOP_SAFE_FIX_ARGS
+    };
+    optional_flag(binary, args, "--config", config, SCALAFMT_EMPTY, files, "")
+}
+
 pub fn psscriptanalyzer_check(
     binary: &Path,
     files: &[&Path],
@@ -2411,11 +2452,13 @@ pub fn ansible_lint_check(
     }
 }
 
-/// `--offline --nocolor --fix=all --project-dir <dir>`, an optional `-c <config>`, and a leading `--dx-collections-path` when collection roots are staged.
+/// `--offline --nocolor --fix=<rules> --project-dir <dir>`, an optional `-c <config>`, and a leading `--dx-collections-path` when collection roots are staged.
+/// The safe rules only reformat YAML, reorder keys and tidy Jinja spacing; `unsafe_fixes` runs every transform.
 pub fn ansible_lint_fix(
     binary: &Path,
     files: &[&Path],
     context: &AnsibleLintContext<'_>,
+    unsafe_fixes: bool,
 ) -> Invocation {
     let mut argv = vec![binary.as_os_str().to_owned()];
     if !context.collections.is_empty() {
@@ -2424,8 +2467,13 @@ pub fn ansible_lint_fix(
         argv.push(OsString::from("--dx-collections-path"));
         argv.push(joined);
     }
+    let fix = if unsafe_fixes {
+        ANSIBLE_LINT_UNSAFE_FIX
+    } else {
+        ANSIBLE_LINT_SAFE_FIX
+    };
     argv.extend(
-        ["--offline", "--nocolor", "--fix=all", "--project-dir"]
+        ["--offline", "--nocolor", fix, "--project-dir"]
             .iter()
             .map(OsString::from),
     );
