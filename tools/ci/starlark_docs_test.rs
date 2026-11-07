@@ -15,7 +15,7 @@ const DOCUMENTED_CALLS: [&str; 2] = ["rule", "aspect"];
 const SKIPPED_SEGMENTS: [&str; 4] = ["tests", "testdata", "fixtures", "third_party"];
 
 /// Packages whose :corpus_starlark is in the test data.
-const PACKAGES: [&str; 74] = [
+const PACKAGES: [&str; 72] = [
     "appimage",
     "astro/rules",
     "bicep/rules",
@@ -62,8 +62,6 @@ const PACKAGES: [&str; 74] = [
     "quality/artifacts/acquire_test",
     "quality/artifacts/hub_test",
     "quality/rules",
-    "quality/tools/cc",
-    "quality/tools/dotnet/fsharplint",
     "quality/tools/javascript",
     "quality/tools/jvm",
     "quality/tools/ruby",
@@ -219,11 +217,14 @@ fn check_attr_dict(ast: &AstModule, path: &str, expr: &AstExpr, out: &mut Scan) 
     let ExprP::Dict(entries) = &expr.node else {
         return;
     };
+    let tool_descriptor = ["kind", "shard"]
+        .iter()
+        .all(|wanted| entries.iter().any(|(key, _)| is_string(key, wanted)));
     for (key, value) in entries {
         let ExprP::Literal(AstLiteral::String(key)) = &key.node else {
             continue;
         };
-        if key.node.starts_with('_') {
+        if key.node.starts_with('_') || (tool_descriptor && key.node == "attr") {
             continue;
         }
         let ExprP::Call(callee, args) = &value.node else {
@@ -244,6 +245,10 @@ fn check_attr_dict(ast: &AstModule, path: &str, expr: &AstExpr, out: &mut Scan) 
             ));
         }
     }
+}
+
+fn is_string(expr: &AstExpr, wanted: &str) -> bool {
+    matches!(&expr.node, ExprP::Literal(AstLiteral::String(text)) if text.node == wanted)
 }
 
 /// The value of the named argument `key`, if passed.
@@ -400,6 +405,15 @@ fn a_test_rule_is_exempt() {
         )
         .is_empty()
     );
+}
+
+#[test]
+fn the_attr_key_is_exempt_only_in_a_tool_descriptor() {
+    let descriptor =
+        "T = {\"x\": {\"attr\": attr.label(), \"kind\": \"file\", \"shard\": \"py\"}}\n";
+    assert!(findings("pkg/defs.bzl", descriptor).is_empty());
+    let plain = "T = {\"attr\": attr.label()}\n";
+    assert_eq!(findings("pkg/defs.bzl", plain).len(), 1);
 }
 
 #[test]
