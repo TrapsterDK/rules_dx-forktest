@@ -63,6 +63,11 @@ Another holder's slot is freed only when it is reclaimable or with `--force`. It
 `slot_busy` while a `dx` command runs in the slot. On an external worktree of
 this repository it removes the checkout and keeps the branch.
 
+Commands that run Bazel inside a slot start its server with
+`--max_idle_secs=300`, so an idle slot's server exits after five minutes.
+`--build-slots <n>` limits how many run at once and `DX_BUILD_SLOT_MEMORY` sets
+the memory each is planned to use.
+
 The working-directory check reads `/proc` on Linux only. It does not see other
 users' processes, processes hidden by `hidepid` or processes in other PID
 namespaces, and each check of a held slot scans every process. Any process whose
@@ -168,7 +173,7 @@ Cursor or Gemini CLI. They ignore `DX_*` variables and print text.
 | --- | --- | --- |
 | `create` | `name`, `cwd` | Leases a slot on branch `worktree-<name>` and prints the path. |
 | `remove` | `worktree_path` | Releases that slot. Paths outside the pool are ignored. |
-| `stop` | `agent_id` | Marks the slots that agent holds as held by a gone holder. |
+| `stop` | `agent_id` | Marks the slots that agent holds as held by a gone holder and stops their Bazel servers. |
 | `guard` | `tool_input.command` | Exits `2` for `git worktree add`, `remove` or `prune`. Exits `2` for `git checkout`, `switch`, `reset`, `rebase`, `fetch`, `pull`, `stash` or `commit`, `bazel`, and `dx build`, `test` or `check` in a slot another agent holds. Exits `2` for the same commands in the primary checkout when the caller holds a slot; the message names the slot. Read-only git, `gh` and `dx worktree add`, `release` and `list` stay allowed. |
 
 `create`, `remove` and `stop` exit `1` on any failure, including empty or
