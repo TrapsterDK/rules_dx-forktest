@@ -140,6 +140,7 @@ pub(crate) struct Flags {
     pub(crate) to: Option<String>,
     pub(crate) here: bool,
     pub(crate) affected: bool,
+    pub(crate) since: Option<String>,
     pub(crate) serve: bool,
     pub(crate) port: Option<u16>,
     pub(crate) host: Option<String>,
@@ -510,6 +511,14 @@ flag_group! {
     AffectedFlag, {
         #[arg(long, overrides_with = "affected")]
         affected: bool,
+    }
+}
+
+flag_group! {
+    /// With --affected, compare against this ref instead of the default branch merge-base.
+    SinceFlag, {
+        #[arg(long, allow_negative_numbers = true, overrides_with = "since", value_name = "REF", value_parser = non_empty)]
+        since: Option<String>,
     }
 }
 
@@ -1018,6 +1027,7 @@ command_args! {
         report: ReportFlag,
         here: HereFlag,
         affected: AffectedFlag,
+        since: SinceFlag,
     };
     /// The flags `dx license` accepts.
     License => 1, NoPassthroughTail, {
@@ -1029,6 +1039,7 @@ command_args! {
         report: ReportFlag,
         here: HereFlag,
         affected: AffectedFlag,
+        since: SinceFlag,
     };
     /// The flags `dx lint` accepts.
     Lint => 2, BazelTail, {
@@ -1044,6 +1055,7 @@ command_args! {
         report: ReportFlag,
         here: HereFlag,
         affected: AffectedFlag,
+        since: SinceFlag,
     };
     /// The flags `dx typecheck` accepts.
     Typecheck => 3, BazelTail, {
@@ -1057,6 +1069,7 @@ command_args! {
         report: ReportFlag,
         here: HereFlag,
         affected: AffectedFlag,
+        since: SinceFlag,
     };
     /// The flags `dx format` accepts.
     Format => 4, BazelTail, {
@@ -1069,6 +1082,7 @@ command_args! {
         fail_on: FailOnFlag,
         here: HereFlag,
         affected: AffectedFlag,
+        since: SinceFlag,
     };
     /// The flags `dx generate` accepts.
     Generate => 5, BazelTail, {
@@ -1086,6 +1100,7 @@ command_args! {
         report: ReportFlag,
         here: HereFlag,
         affected: AffectedFlag,
+        since: SinceFlag,
     };
     /// The flags `dx test` accepts.
     Test => 7, BazelTail, {
@@ -1095,6 +1110,7 @@ command_args! {
         report: ReportFlag,
         here: HereFlag,
         affected: AffectedFlag,
+        since: SinceFlag,
     };
     /// The flags `dx coverage` accepts.
     Coverage => 8, BazelTail, {
@@ -1106,6 +1122,7 @@ command_args! {
         report: ReportFlag,
         here: HereFlag,
         affected: AffectedFlag,
+        since: SinceFlag,
     };
     /// The flags `dx bench` accepts.
     Bench => 9, BazelTail, {
@@ -1135,6 +1152,7 @@ command_args! {
         report: ReportFlag,
         here: HereFlag,
         affected: AffectedFlag,
+        since: SinceFlag,
     };
     /// The flags `dx clean` accepts.
     Clean => 13, NoScopeTail, {
@@ -1192,6 +1210,7 @@ command_args! {
         report: ReportFlag,
         here: HereFlag,
         affected: AffectedFlag,
+        since: SinceFlag,
         poll: PollFlag,
         own: BuildModeArgs,
     };

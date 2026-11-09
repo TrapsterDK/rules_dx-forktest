@@ -319,6 +319,7 @@ fn parse_inner<S: AsRef<OsStr>>(
         to,
         here,
         affected,
+        since,
         serve,
         port,
         host,
@@ -408,6 +409,9 @@ fn parse_inner<S: AsRef<OsStr>>(
     let reports = report;
     if here && !targets.is_empty() {
         return Err(ArgsError::ConflictingHere);
+    }
+    if since.is_some() && !affected {
+        return Err(ArgsError::SinceNeedsAffected);
     }
     if affected && here {
         return Err(ArgsError::AffectedWithHere);
@@ -694,6 +698,7 @@ fn parse_inner<S: AsRef<OsStr>>(
         to,
         here,
         affected,
+        since,
         affected_handoff: None,
         serve,
         port,
