@@ -15,7 +15,7 @@ fn schema_defines_exactly_the_registered_events() {
     let mut defined: Vec<&str> = defs
         .keys()
         .map(String::as_str)
-        .filter(|name| *name != "schema")
+        .filter(|name| !matches!(*name, "schema" | "finished"))
         .collect();
     defined.sort_unstable();
     let mut registered = EVENTS.to_vec();
@@ -387,4 +387,18 @@ fn an_unknown_field_fails_the_schema() {
     let mut event = started();
     event["extra"] = json!(1);
     assert!(!validator.is_valid(&event));
+}
+
+#[test]
+fn an_unknown_field_on_a_finished_event_fails_the_schema() {
+    let validator = jsonschema::draft202012::new(&schema()).expect("schema compiles");
+    let phase = nest_phase_event(finished(), "check", "resolve", "c1").expect("phase_finished");
+    assert_eq!(phase["event"], "phase_finished");
+    assert!(validator.is_valid(&phase), "{phase}");
+    let mut extra = phase;
+    extra["extra"] = json!(1);
+    assert!(!validator.is_valid(&extra));
+    let mut command = finished();
+    command["extra"] = json!(1);
+    assert!(!validator.is_valid(&command));
 }
