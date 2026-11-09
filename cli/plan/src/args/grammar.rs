@@ -1076,6 +1076,7 @@ command_args! {
         diff: DiffFlag,
         apply: ApplyFlag,
         here: HereFlag,
+        affected: AffectedFlag,
     };
     /// The flags `dx build` accepts.
     Build => 6, BazelTail, {
