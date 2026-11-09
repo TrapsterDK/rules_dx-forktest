@@ -266,6 +266,7 @@
         "examples",
         "families",
         "flatbuffers",
+        "fortran",
         "gazelle",
         "generation",
         "go",
@@ -304,6 +305,7 @@
         "//dotnet:repos.bzl%dotnet_tools",
         "//elixir/toolchain:repos.bzl%elixir",
         "//erlang/toolchain:repos.bzl%erlang",
+        "//fortran/toolchain:repos.bzl%fortran",
         "//gazelle/dispatch:extension.bzl%dx_gazelle",
         "//javascript/private:dev_hub.bzl%dx_dev_hub",
         "//quality/artifacts:extension.bzl%dx_tools",
@@ -544,17 +546,22 @@
         "real_fortran_typecheck_aspect",
         "real_fortran_typecheck_probe_aspect"
       ],
-      "bazel_deps": [],
+      "bazel_deps": [
+        "rules_dx"
+      ],
       "dirs": [
-        "fortran"
+        "bcr_test_module",
+        "third_party"
       ],
       "extensions": [
-        "//fortran/toolchain:repos.bzl%fortran"
+        "@rules_dx//fortran/toolchain:repos.bzl%fortran"
       ],
       "file_extensions": [
         ".f90"
       ],
       "gazelle": [],
+      "module": "rules_dx_fortran",
+      "path": "families/fortran",
       "repo_rules": [],
       "toolchains": [
         "@dx_fortran_toolchains//:all"
