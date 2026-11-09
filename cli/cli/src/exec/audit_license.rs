@@ -363,7 +363,7 @@ pub(super) fn run_license(
     for exception in &policy.exceptions {
         let problem = |error: &dx_audit::license_policy::PolicyProblem| {
             format!(
-                "licenses.toml:{}: {}: {error}",
+                "license.toml:{}: {}: {error}",
                 exception.line,
                 exception.entry_label()
             )
