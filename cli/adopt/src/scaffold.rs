@@ -143,6 +143,8 @@ const LANGUAGE_EDITOR_EXTENSIONS: [(&str, &[&str]); 17] = [
 ];
 
 const JS_FILES: &[&str] = &[".js", ".jsx", ".ts", ".tsx", ".vue", ".svelte", ".astro"];
+const SHELL_FILES: &[&str] = &[".sh", ".bash"];
+const LOCAL_BIN: &str = ".dx/local/bin";
 const CSS_FILES: &[&str] = &[".css", ".scss", ".less"];
 
 /// Lint and format extensions, each with the dx tool it follows and the files that bring it in.
@@ -413,6 +415,7 @@ fn editor_settings_value(extensions: &BTreeSet<String>, tools: &EditorTools) -> 
     let has = |own: &[&str]| own.iter().any(|ext| extensions.contains(*ext));
     let base = format!("--output_base=${{workspaceFolder}}/{IDE_OUTPUT_BASE}");
     let ide = format!("${{workspaceFolder}}/{}", dx_ide::IDE_DIR);
+    let bin = |name: &str| format!("${{workspaceFolder}}/{LOCAL_BIN}/{name}");
     let excludes = serde_json::json!({"**/bazel-*/**": true, "**/.dx/local/ide/**": true});
     let owned = |root: &str, base: &str| {
         format!(
@@ -458,6 +461,7 @@ fn editor_settings_value(extensions: &BTreeSet<String>, tools: &EditorTools) -> 
     if tools.is_selected("ruff") {
         python["ruff.configuration"] =
             owned(&tools.ruff_config, ".dx/config/ruff/base.toml").into();
+        python["ruff.path"] = serde_json::json!([bin("ruff")]);
     }
     add(&[".py", ".pyi"], python);
     let mut js = serde_json::json!({"typescript.tsdk": format!("{ide}/typescript/lib")});
@@ -466,8 +470,11 @@ fn editor_settings_value(extensions: &BTreeSet<String>, tools: &EditorTools) -> 
             "overrideConfigFile": owned(&tools.eslint_config, ".dx/config/eslint/base.mjs"),
         });
     }
-    if tools.is_selected("biome") && !tools.biome_config.is_empty() {
-        js["biome.configurationPath"] = owned(&tools.biome_config, "").into();
+    if tools.is_selected("biome") {
+        js["biome.lsp.bin"] = bin("biome").into();
+        if !tools.biome_config.is_empty() {
+            js["biome.configurationPath"] = owned(&tools.biome_config, "").into();
+        }
     }
     add(JS_FILES, js);
     if tools.is_selected("stylelint") {
@@ -477,6 +484,12 @@ fn editor_settings_value(extensions: &BTreeSet<String>, tools: &EditorTools) -> 
                 "stylelint.configFile":
                     owned(&tools.stylelint_config, ".dx/config/stylelint/base.json"),
             }),
+        );
+    }
+    if tools.is_selected("shellcheck") {
+        add(
+            SHELL_FILES,
+            serde_json::json!({"shellcheck.executablePath": bin("shellcheck")}),
         );
     }
     // gopls ignores staticcheck.conf (golang/go#36373), so the tier goes in as settings. gopls
@@ -496,7 +509,7 @@ fn editor_settings_value(extensions: &BTreeSet<String>, tools: &EditorTools) -> 
     add(
         &[".c", ".cc", ".cpp", ".cxx", ".h", ".hh", ".hpp"],
         serde_json::json!({
-            "clangd.path": format!("{ide}/cc/clangd"),
+            "clangd.path": bin("clangd"),
             "clangd.arguments": [format!("--compile-commands-dir={ide}/cc")],
         }),
     );
@@ -537,8 +550,11 @@ const NESTED_SETTINGS: [&str; 4] = [
 ];
 
 /// Settings dx writes only for a selected tool; they go when the tool is no longer selected.
-const TOOL_SETTINGS: [&[&str]; 5] = [
+const TOOL_SETTINGS: [&[&str]; 8] = [
     &["ruff.configuration"],
+    &["ruff.path"],
+    &["biome.lsp.bin"],
+    &["shellcheck.executablePath"],
     &["eslint.options", "overrideConfigFile"],
     &["biome.configurationPath"],
     &["stylelint.configFile"],
@@ -1225,7 +1241,7 @@ mod tests {
             serde_json::from_str(&settings.content).expect("valid JSON");
         assert_eq!(
             parsed["clangd.path"],
-            serde_json::Value::from("${workspaceFolder}/.dx/local/ide/cc/clangd")
+            serde_json::Value::from("${workspaceFolder}/.dx/local/bin/clangd")
         );
         assert_eq!(
             parsed["clangd.arguments"],
@@ -1858,7 +1874,7 @@ mod tests {
         );
         assert_eq!(
             parsed["clangd.path"],
-            serde_json::Value::from("${workspaceFolder}/.dx/local/ide/cc/clangd")
+            serde_json::Value::from("${workspaceFolder}/.dx/local/bin/clangd")
         );
         assert!(settings.ends_with('\n'), "{settings}");
         for key in [
@@ -1873,6 +1889,26 @@ mod tests {
             "metals.javaHome",
         ] {
             assert!(settings.contains(key), "lost {key}");
+        }
+    }
+
+    #[test]
+    fn selected_tools_point_at_the_synced_binaries() {
+        let mut files = all_families();
+        files.insert(".sh".to_owned());
+        let value = editor_settings_value(&files, &EditorTools::default());
+        let bin = "${workspaceFolder}/.dx/local/bin";
+        assert_eq!(value["ruff.path"], serde_json::json!([format!("{bin}/ruff")]));
+        assert_eq!(value["biome.lsp.bin"], format!("{bin}/biome"));
+        assert_eq!(value["shellcheck.executablePath"], format!("{bin}/shellcheck"));
+        assert_eq!(value["clangd.path"], format!("{bin}/clangd"));
+        let tools = EditorTools {
+            selected: Some(std::collections::BTreeSet::new()),
+            ..EditorTools::default()
+        };
+        let value = editor_settings_value(&files, &tools);
+        for key in ["ruff.path", "biome.lsp.bin", "shellcheck.executablePath"] {
+            assert!(value.get(key).is_none(), "{key}");
         }
     }
 
@@ -1894,7 +1930,6 @@ mod tests {
         for key in [
             "python.defaultInterpreterPath",
             "typescript.tsdk",
-            "clangd.path",
             "java.jdt.ls.java.home",
             "kotlin.java.home",
             "metals.javaHome",
