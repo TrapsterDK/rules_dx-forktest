@@ -95,6 +95,14 @@ pub struct CommandMeta {
     pub labels: LabelsPolicy,
 }
 
+/// Per-command output capabilities. `streamed` means JSON events are written while the command runs.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct OutputCaps {
+    pub text: bool,
+    pub json: bool,
+    pub streamed: bool,
+}
+
 pub static COMMANDS: [CommandMeta; 25] = [
     CommandMeta {
         command: Command::Security,
@@ -489,9 +497,27 @@ impl Command {
         self.meta().is_adoption
     }
 
-    /// Whether the grammar lets `dx <command> --output` parse.
+    /// The output formats the command offers.
+    pub fn output_caps(self) -> OutputCaps {
+        use Command::*;
+        let (json, streamed) = match self {
+            Completion | Deploy => (false, false),
+            Lint | Typecheck | Format | Generate | Build | Test | Coverage | Bench | Run
+            | Check | Update | Sync | Watch | Docs | Fuzz => (true, true),
+            Security | License | Clean | Init | Upgrade | Status | Worktree | Config => {
+                (true, false)
+            }
+        };
+        OutputCaps {
+            text: true,
+            json,
+            streamed,
+        }
+    }
+
+    /// Whether `dx <command> --output json` is accepted.
     pub fn supports_json(self) -> bool {
-        super::grammar::accepts_long(self, "output")
+        self.output_caps().json
     }
 
     /// Whether the grammar lets `dx <command> --diff` parse.
@@ -583,6 +609,41 @@ mod tests {
     use super::*;
 
     #[test]
+    fn every_json_command_writes_the_common_envelope() {
+        use clap::ValueEnum;
+        for command in Command::value_variants()
+            .iter()
+            .copied()
+            .filter(|c| c.output_caps().json)
+        {
+            let name = command.name();
+            let started = dx_output::command_started(name, "default").expect("started");
+            assert_eq!(
+                started.to_string(),
+                format!(
+                    r#"{{"command":"{name}","event":"command_started","mode":"default","schema":{{"major":{},"minor":{}}}}}"#,
+                    dx_output::SCHEMA_MAJOR,
+                    dx_output::SCHEMA_MINOR
+                ),
+                "dx {name} command_started"
+            );
+            for (code, status) in [(0, "ok"), (1, "failed"), (3, "failed")] {
+                let finished =
+                    dx_output::command_finished(code, &dx_output::FinishedCounts::default());
+                assert_eq!(
+                    finished.to_string(),
+                    format!(
+                        r#"{{"event":"command_finished","exit_code":{code},"schema":{{"major":{},"minor":{}}},"status":"{status}"}}"#,
+                        dx_output::SCHEMA_MAJOR,
+                        dx_output::SCHEMA_MINOR
+                    ),
+                    "dx {name} command_finished"
+                );
+            }
+        }
+    }
+
+    #[test]
     fn support_sets_are_pinned() {
         use clap::ValueEnum;
         let all = Command::value_variants();
@@ -595,6 +656,15 @@ mod tests {
             .filter(|c| !matches!(c, Command::Deploy | Command::Completion))
             .collect();
         assert_eq!(set(Command::supports_json), json);
+        for command in all {
+            assert_eq!(
+                command.output_caps().json,
+                super::super::grammar::accepts_long(*command, "output"),
+                "dx {} output capability",
+                command.name()
+            );
+            assert!(command.output_caps().json || !command.output_caps().streamed);
+        }
         let in_order = |names: &[Command]| -> Vec<Command> {
             all.iter().copied().filter(|c| names.contains(c)).collect()
         };
