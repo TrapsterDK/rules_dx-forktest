@@ -34,6 +34,11 @@ pub trait Host {
 
     /// The id of the current boot, when the OS gives one.
     fn boot_id(&self) -> Option<String>;
+
+    /// Whether a running process has `dir` or a directory below it as its working directory.
+    fn process_in(&self, _dir: &Path) -> bool {
+        false
+    }
     fn disk_space(&self, path: &Path) -> Option<DiskSpace>;
     fn servers(&self) -> Vec<Server>;
     /// Whether `servers` can see the process list; false when `ps` is absent or fails.
@@ -571,6 +576,30 @@ pub fn rc_output_roots(files: Vec<PathBuf>, workspace: &Path) -> Vec<PathBuf> {
     roots
 }
 
+/// Whether a process works in `dir` or below it, read from `/proc/<pid>/cwd`. Git processes are
+/// skipped: dx runs them in the slot for its own probes. Processes this user cannot read are not seen.
+#[cfg(target_os = "linux")]
+fn process_in(dir: &Path) -> bool {
+    let dir = resolved(dir);
+    let Ok(entries) = std::fs::read_dir("/proc") else {
+        return false;
+    };
+    entries.flatten().any(|entry| {
+        let path = entry.path();
+        entry
+            .file_name()
+            .to_str()
+            .is_some_and(|name| name.bytes().all(|byte| byte.is_ascii_digit()))
+            && std::fs::read_link(path.join("cwd")).is_ok_and(|cwd| cwd.starts_with(&dir))
+            && std::fs::read_to_string(path.join("comm")).is_ok_and(|comm| comm.trim() != "git")
+    })
+}
+
+#[cfg(not(target_os = "linux"))]
+fn process_in(_dir: &Path) -> bool {
+    false
+}
+
 fn find_bazel() -> Option<PathBuf> {
     let path = std::env::var_os("PATH")?;
     for dir in std::env::split_paths(&path) {
@@ -606,6 +635,10 @@ impl Host for SystemHost {
 
     fn boot_id(&self) -> Option<String> {
         dx_process::procs::boot_id()
+    }
+
+    fn process_in(&self, dir: &Path) -> bool {
+        process_in(dir)
     }
 
     fn disk_space(&self, path: &Path) -> Option<DiskSpace> {
@@ -864,6 +897,43 @@ mod tests {
             servers[0].output_user_root,
             Some(PathBuf::from("/home/u/.cache/bazel/_bazel_u"))
         );
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn a_process_working_below_a_directory_is_found() {
+        let dir = tempfile::tempdir().expect("dir");
+        let sub = dir.path().join("sub");
+        std::fs::create_dir(&sub).expect("sub");
+        assert!(!process_in(dir.path()));
+        let mut child = std::process::Command::new("sleep")
+            .arg("30")
+            .current_dir(&sub)
+            .spawn()
+            .expect("spawn");
+        let found = process_in(dir.path());
+        child.kill().expect("kill");
+        child.wait().expect("wait");
+        assert!(found);
+        assert!(!process_in(dir.path()));
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn a_git_process_working_in_a_directory_is_ignored() {
+        let dir = tempfile::tempdir().expect("dir");
+        let bin = tempfile::tempdir().expect("bin");
+        let git = bin.path().join("git");
+        std::os::unix::fs::symlink("/bin/sleep", &git).expect("link");
+        let mut child = std::process::Command::new(&git)
+            .arg("30")
+            .current_dir(dir.path())
+            .spawn()
+            .expect("spawn");
+        let found = process_in(dir.path());
+        child.kill().expect("kill");
+        child.wait().expect("wait");
+        assert!(!found);
     }
 
     #[test]

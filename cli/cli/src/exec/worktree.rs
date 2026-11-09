@@ -303,6 +303,22 @@ fn release_pool(workspace: &Path, target: &Path) -> Result<Pool, WorktreeError> 
     open_pool(workspace)
 }
 
+/// The slot number `path` names, when it is plain digits and no such path exists.
+fn slot_number(path: &str, target: &Path) -> Option<u32> {
+    if path.is_empty() || !path.bytes().all(|byte| byte.is_ascii_digit()) || target.exists() {
+        return None;
+    }
+    path.parse().ok()
+}
+
+/// The slot path a digit-only release argument names, else `target` unchanged.
+fn slot_target(path: Option<&str>, target: PathBuf, slot_path: impl Fn(u32) -> PathBuf) -> PathBuf {
+    match path.and_then(|path| slot_number(path, &target)) {
+        Some(slot) => slot_path(slot),
+        None => target,
+    }
+}
+
 fn release(
     invocation: &Invocation,
     workspace: &Path,
@@ -312,9 +328,10 @@ fn release(
     out: &mut dyn Write,
 ) -> Result<i32, Failed> {
     let cwd = dx_process::current_directory().unwrap_or_else(|_| workspace.to_path_buf());
-    let target = release_target(path, workspace, &cwd);
+    let mut target = release_target(path, workspace, &cwd);
     let gone = !workspace.exists();
     let pool = release_pool(workspace, &target)?;
+    target = slot_target(path, target, |slot| pool.slot_path(slot));
     if !gone {
         ops::claim(&pool, host, who, workspace)?;
     }
@@ -1230,6 +1247,30 @@ mod tests {
             Path::new("/home/u/proj"),
         );
         assert_eq!(target, PathBuf::from("/home/u/proj/../slots/4"));
+    }
+
+    #[test]
+    fn a_digit_only_release_path_names_a_slot() {
+        assert_eq!(slot_number("28", Path::new("/nonexistent/dx/28")), Some(28));
+        assert_eq!(slot_number("x28", Path::new("/nonexistent/dx/x28")), None);
+        assert_eq!(slot_number("", Path::new("/nonexistent")), None);
+    }
+
+    #[test]
+    fn release_28_drives_to_the_slot_path() {
+        let slot_path = |slot: u32| PathBuf::from(format!("/cache/slots/{slot}"));
+        let target = slot_target(Some("28"), PathBuf::from("/nonexistent/cwd/28"), slot_path);
+        assert_eq!(target, PathBuf::from("/cache/slots/28"));
+        let kept = slot_target(Some("x28"), PathBuf::from("/nonexistent/cwd/x28"), slot_path);
+        assert_eq!(kept, PathBuf::from("/nonexistent/cwd/x28"));
+        let none = slot_target(None, PathBuf::from("/ws"), slot_path);
+        assert_eq!(none, PathBuf::from("/ws"));
+    }
+
+    #[test]
+    fn a_digit_only_release_path_that_exists_stays_a_path() {
+        let dir = tempfile::tempdir().expect("dir");
+        assert_eq!(slot_number("28", dir.path()), None);
     }
 
     #[test]
