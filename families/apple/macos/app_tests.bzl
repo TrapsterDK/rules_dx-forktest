@@ -1,11 +1,12 @@
 """macOS application selection coverage."""
 
 load("@rules_dx//libs/starlark:defs.bzl", "expect_equal", "starlark_test")
-load("//bundle:defs.bzl", "bundle_id_errors", "bundle_version_errors", "platform_errors")
-load(":app.bzl", "default_macos_app", "macos_app_errors", "owner_relative_path", "plugin_errors")
+load("//bundle:validate.bzl", "bundle_id_errors", "bundle_platform_errors", "bundle_version_errors")
+load(":app.bzl", "owner_relative_path")
+load(":validate.bzl", "macos_app_errors", "macos_default_app", "macos_plugin_errors")
 
 def _app(**kwargs):
-    base = default_macos_app()
+    base = macos_default_app()
     fields = [
         "arch",
         "bundle_id",
@@ -86,7 +87,7 @@ def _app_checks():
     ))
     checks.append(expect_equal(
         "two platforms fail",
-        platform_errors("apple_macos_app", ["arm64", "x86_64"], ["arm64"]),
+        bundle_platform_errors("apple_macos_app", ["arm64", "x86_64"], ["arm64"]),
         ["apple_macos_app: platforms takes one of arm64"],
     ))
     checks.append(expect_equal(
@@ -109,15 +110,15 @@ def _app_checks():
         macos_app_errors(_app(xcode_version = "latest")),
         ["apple_macos_app: xcode_version 'latest' is not a dotted version"],
     ))
-    checks.append(expect_equal("named plugins are clean", plugin_errors(["Share.appex", "Helper.xpc"]), []))
+    checks.append(expect_equal("named plugins are clean", macos_plugin_errors(["Share.appex", "Helper.xpc"]), []))
     checks.append(expect_equal(
         "empty plugin fails",
-        plugin_errors(["Share.appex", ""]),
+        macos_plugin_errors(["Share.appex", ""]),
         ["apple_macos_app: plugin names must not be empty"],
     ))
     checks.append(expect_equal(
         "repeated plugin fails",
-        plugin_errors(["Share.appex", "Share.appex"]),
+        macos_plugin_errors(["Share.appex", "Share.appex"]),
         ["apple_macos_app: plugin 'Share.appex' is listed twice"],
     ))
     checks.append(expect_equal(
