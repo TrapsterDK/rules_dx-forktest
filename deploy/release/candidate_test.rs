@@ -1,5 +1,4 @@
 use std::path::{Path, PathBuf};
-use std::process::Command;
 use std::sync::OnceLock;
 
 use dx_release_tools::candidate::{
@@ -44,32 +43,28 @@ fn git_home() -> &'static Path {
 
 fn git(dir: &Path, args: &[&str]) -> String {
     let home = git_home();
-    let out = Command::new("git")
-        .env("HOME", home)
-        .env("GIT_CONFIG_NOSYSTEM", "1")
-        .env("GIT_CONFIG_GLOBAL", home.join(".gitconfig"))
-        .env("GIT_CEILING_DIRECTORIES", std::env::temp_dir())
-        .args([
-            "-c",
-            "user.name=Candidate Test",
-            "-c",
-            "user.email=candidate@example.invalid",
-            "-c",
-            "commit.gpgsign=false",
-            "-c",
-            "tag.gpgsign=false",
-            "-c",
-            "init.defaultBranch=main",
-        ])
-        .args(args)
-        .current_dir(dir)
-        .output()
-        .expect("spawn git");
-    assert!(
-        out.status.success(),
-        "git {args:?} failed: {}",
-        String::from_utf8_lossy(&out.stderr)
-    );
+    let out = dx_process::capture::run_checked(
+        dx_process::capture::git(dir)
+            .env("HOME", home)
+            .env("GIT_CONFIG_NOSYSTEM", "1")
+            .env("GIT_CONFIG_GLOBAL", home.join(".gitconfig"))
+            .env("GIT_CEILING_DIRECTORIES", std::env::temp_dir())
+            .args([
+                "-c",
+                "user.name=Candidate Test",
+                "-c",
+                "user.email=candidate@example.invalid",
+                "-c",
+                "commit.gpgsign=false",
+                "-c",
+                "tag.gpgsign=false",
+                "-c",
+                "init.defaultBranch=main",
+            ])
+            .args(args),
+        dx_process::capture::DEFAULT_TIMEOUT,
+    )
+    .unwrap_or_else(|error| panic!("git {args:?}: {error}"));
     String::from_utf8(out.stdout).expect("utf8")
 }
 

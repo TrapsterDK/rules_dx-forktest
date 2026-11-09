@@ -216,6 +216,7 @@ rust_library(
         "//cli/audit:dx_audit",
         "//cli/digest:dx_digest",
         "//cli/path:dx_path",
+        "//cli/process:dx_process",
         "//cli/sbom:dx_sbom",
         "//cli/update:dx_update",
         "//libs/binfmt:dx_binfmt",
@@ -336,7 +337,10 @@ rust_test(
         package_name = "deploy/dx_deploy_tools",
         normal = True,
         normal_dev = True,
-    ) + ["//tools/testing:dx_testing"],
+    ) + [
+        "//cli/process:dx_process",
+        "//tools/testing:dx_testing",
+    ],
 )
 
 exports_files(["Cargo.toml"])

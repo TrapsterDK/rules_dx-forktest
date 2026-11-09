@@ -189,7 +189,7 @@ impl Job {
         }
         let mut info: ExtendedLimit = unsafe { std::mem::zeroed() };
         info.basic.limit_flags = match descendants {
-            Descendants::Owned => KILL_ON_JOB_CLOSE,
+            Descendants::Owned | Descendants::Foreground => KILL_ON_JOB_CLOSE,
             Descendants::Detachable => JOB_OBJECT_LIMIT_BREAKAWAY_OK,
         };
         let applied = unsafe {
@@ -300,7 +300,7 @@ impl Job {
     fn stop(&self) {
         // Without a console this ends the whole job, server included; see
         // docs/cli/commands/completion.md.
-        if self.descendants == Descendants::Owned || !self.stop_attached() {
+        if self.descendants != Descendants::Detachable || !self.stop_attached() {
             self.terminate();
         }
     }
@@ -328,6 +328,10 @@ impl OwnedChild {
         self.child.try_wait()
     }
 
+    pub fn take_stdin(&mut self) -> Option<std::process::ChildStdin> {
+        self.child.stdin.take()
+    }
+
     pub fn take_stdout(&mut self) -> Option<ChildStdout> {
         self.child.stdout.take()
     }
@@ -341,7 +345,9 @@ pub fn spawn_owned(command: &mut Command, descendants: Descendants) -> io::Resul
     use std::os::windows::process::CommandExt;
     let job = Job::create(descendants)?;
     let mut child = match descendants {
-        Descendants::Owned => command.creation_flags(CREATE_SUSPENDED).spawn()?,
+        Descendants::Owned | Descendants::Foreground => {
+            command.creation_flags(CREATE_SUSPENDED).spawn()?
+        }
         Descendants::Detachable => match command
             .creation_flags(CREATE_SUSPENDED | CREATE_BREAKAWAY_FROM_JOB)
             .spawn()

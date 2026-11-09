@@ -455,22 +455,14 @@ fn dx_snapshot(workspace: &Path) -> BTreeMap<String, Vec<u8>> {
 }
 
 fn git(workspace: &Path, args: &[&str], input: Option<&[u8]>) -> Option<Vec<u8>> {
-    let mut child = std::process::Command::new("git")
-        .arg("-C")
-        .arg(workspace)
-        .args(args)
-        .stdin(std::process::Stdio::piped())
-        .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::null())
-        .spawn()
-        .ok()?;
-    let mut stdin = child.stdin.take()?;
-    if let Some(bytes) = input {
-        stdin.write_all(bytes).ok()?;
-    }
-    drop(stdin);
-    let output = child.wait_with_output().ok()?;
-    output.status.success().then_some(output.stdout)
+    dx_process::capture::run_captured_with_input(
+        dx_process::capture::git(workspace).args(args),
+        input,
+        dx_process::capture::DEFAULT_TIMEOUT,
+    )
+    .and_then(dx_process::capture::Captured::into_success)
+    .ok()
+    .map(|output| output.stdout)
 }
 
 /// The old base an override copy was taken from: the pre-upgrade base when its blob sha
@@ -788,13 +780,11 @@ mod tests {
         let js = "a();\n// eslint-disable-next-line no-console\nb();\n// eslint-disable-next-line no-undef\n";
         std::fs::write(root.join("web/a.js"), js).expect("a.js");
         let git = |args: &[&str]| {
-            let status = std::process::Command::new("git")
-                .arg("-C")
-                .arg(&root)
-                .args(args)
-                .status()
-                .expect("git");
-            assert!(status.success());
+            dx_process::capture::run_checked(
+                dx_process::capture::git(&root).args(args),
+                dx_process::capture::DEFAULT_TIMEOUT,
+            )
+            .expect("git");
         };
         git(&["init", "-q"]);
         git(&["add", "web/a.js"]);
@@ -811,16 +801,12 @@ mod tests {
     const TYPOS_BASE: &str = ".dx/config/typos/base.toml";
 
     fn blob(root: &Path, path: &str) -> String {
-        let out = std::process::Command::new("git")
-            .arg("-C")
-            .arg(root)
-            .args(["hash-object", "--", path])
-            .output()
-            .expect("git");
-        String::from_utf8(out.stdout)
-            .expect("utf8")
-            .trim()
-            .to_owned()
+        let out = dx_process::capture::run_checked(
+            dx_process::capture::git(root).args(["hash-object", "--", path]),
+            dx_process::capture::DEFAULT_TIMEOUT,
+        )
+        .expect("git");
+        out.stdout_text().trim().to_owned()
     }
 
     /// A synced workspace whose typos base gained a line after the override was

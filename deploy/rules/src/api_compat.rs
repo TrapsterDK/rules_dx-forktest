@@ -220,16 +220,12 @@ pub fn workspace_dir() -> std::path::PathBuf {
 
 /// Returns the highest `v<version>` tag below `next` in the repository at `workspace`.
 pub fn previous_git_tag(workspace: &std::path::Path, next: &str) -> Result<Option<String>, String> {
-    let output = std::process::Command::new("git")
-        .arg("-C")
-        .arg(workspace)
-        .args(["tag", "--list", "v*"])
-        .output()
-        .map_err(|error| format!("git: {error}"))?;
-    if !output.status.success() {
-        return Err("git tag --list failed".to_owned());
-    }
-    Ok(previous_tag(&String::from_utf8_lossy(&output.stdout), next))
+    let output = dx_process::capture::run_checked(
+        dx_process::capture::git(workspace).args(["tag", "--list", "v*"]),
+        dx_process::capture::DEFAULT_TIMEOUT,
+    )
+    .map_err(|error| error.to_string())?;
+    Ok(previous_tag(&output.stdout_text(), next))
 }
 
 /// Downloads `url` up to `limit` bytes; None when the server answers 404 or 410.
@@ -266,20 +262,12 @@ pub fn export_git_dir(
     marker: &str,
 ) -> Result<bool, String> {
     let git = |args: &[&str]| -> Result<Vec<u8>, String> {
-        let output = std::process::Command::new("git")
-            .arg("-C")
-            .arg(workspace)
-            .args(args)
-            .output()
-            .map_err(|error| format!("git: {error}"))?;
-        if !output.status.success() {
-            return Err(format!(
-                "git {} failed: {}",
-                args.join(" "),
-                String::from_utf8_lossy(&output.stderr).trim()
-            ));
-        }
-        Ok(output.stdout)
+        dx_process::capture::run_checked(
+            dx_process::capture::git(workspace).args(args),
+            dx_process::capture::DEFAULT_TIMEOUT,
+        )
+        .map(|output| output.stdout)
+        .map_err(|error| error.to_string())
     };
     let dir = rel_dir.trim_matches('/');
     let spec = if dir.is_empty() { "." } else { dir };
@@ -475,13 +463,13 @@ mod tests {
     }
 
     fn git_in(dir: &std::path::Path, args: &[&str]) {
-        let status = std::process::Command::new("git")
-            .args(["-c", "user.name=t", "-c", "user.email=t@example.com"])
-            .args(args)
-            .current_dir(dir)
-            .status()
-            .expect("git");
-        assert!(status.success(), "git {args:?}");
+        dx_process::capture::run_checked(
+            dx_process::capture::git(dir)
+                .args(["-c", "user.name=t", "-c", "user.email=t@example.com"])
+                .args(args),
+            dx_process::capture::DEFAULT_TIMEOUT,
+        )
+        .unwrap_or_else(|error| panic!("git {args:?}: {error}"));
     }
 
     #[test]
@@ -523,11 +511,11 @@ mod tests {
             export_git_dir(&repo, "nope", "v1.0.0", &missing, "Cargo.toml"),
             Ok(false)
         );
-        let status = std::process::Command::new("git")
-            .args(["status", "--porcelain"])
-            .current_dir(&repo)
-            .output()
-            .expect("status");
+        let status = dx_process::capture::run_checked(
+            dx_process::capture::git(&repo).args(["status", "--porcelain"]),
+            dx_process::capture::DEFAULT_TIMEOUT,
+        )
+        .expect("status");
         assert!(status.stdout.is_empty(), "{:?}", status.stdout);
         let _ = std::fs::remove_dir_all(&root);
     }

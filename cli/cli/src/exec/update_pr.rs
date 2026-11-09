@@ -96,13 +96,7 @@ fn run(invocation: &Invocation, env: Env<'_>, fetch: &dyn Fetch, tools: &Tools) 
     }
     let Collected {
         found, registries, ..
-    } = collect(
-        workspace,
-        &resolved,
-        &builtins,
-        false,
-        fetch,
-    );
+    } = collect(workspace, &resolved, &builtins, false, fetch);
     let min_age = invocation.min_age.unwrap_or(DEFAULT_MIN_AGE);
     let cutoff = (min_age > 0)
         .then(|| {
@@ -247,9 +241,7 @@ fn run(invocation: &Invocation, env: Env<'_>, fetch: &dyn Fetch, tools: &Tools) 
             tail(&text)
         ))
     };
-    let outcomes = match publish(
-        workspace, tools, &plans, &scope, &rules, &locks, &mut step,
-    ) {
+    let outcomes = match publish(workspace, tools, &plans, &scope, &rules, &locks, &mut step) {
         Ok(outcomes) => outcomes,
         Err(reason) => {
             return operational_output(invocation.output, out, err, CODE_UPDATE_PR_FAILED, &reason);
@@ -325,21 +317,25 @@ fn emit(out: &mut dyn Write, outcomes: &[Outcome], json: bool, exit: i32) -> Res
     Ok(())
 }
 
+const NETWORK_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(600);
+
 pub(super) fn program(program: &Path, root: &Path, args: &[&str]) -> Result<String, String> {
-    let output = Command::new(program)
-        .args(args)
-        .current_dir(root)
-        .output()
-        .map_err(|error| format!("{} {}: {error}", program.display(), args.join(" ")))?;
-    if !output.status.success() {
-        return Err(format!(
-            "{} {} failed: {}",
-            program.display(),
-            args.join(" "),
-            tail(&String::from_utf8_lossy(&output.stderr))
-        ));
-    }
-    Ok(String::from_utf8_lossy(&output.stdout).into_owned())
+    let label = format!("{} {}", program.display(), args.join(" "));
+    dx_process::capture::run_checked_with(
+        Command::new(program).args(args).current_dir(root),
+        NETWORK_TIMEOUT,
+        dx_process::capture::RunOptions {
+            foreground: true,
+            ..Default::default()
+        },
+    )
+    .map(|output| output.stdout_text())
+    .map_err(|error| match error {
+        dx_process::capture::RunError::Failed { stderr, .. } => {
+            format!("{label} failed: {}", tail(&stderr))
+        }
+        other => format!("{label}: {other}"),
+    })
 }
 
 pub(super) const WORKFLOW_SKIP: &str = "skipped: token cannot push workflow files";
@@ -364,24 +360,25 @@ fn refused_workflow(stderr: &str) -> bool {
 
 pub(super) fn push(tools: &Tools, root: &Path, branch: &str) -> Result<bool, String> {
     let args = ["push", "--force-with-lease", "origin", branch];
-    let output = Command::new(&tools.git)
-        .args(args)
-        .current_dir(root)
-        .output()
-        .map_err(|error| format!("{} {}: {error}", tools.git.display(), args.join(" ")))?;
-    if output.status.success() {
-        return Ok(true);
+    let label = format!("{} {}", tools.git.display(), args.join(" "));
+    let result = dx_process::capture::run_checked_with(
+        Command::new(&tools.git).args(args).current_dir(root),
+        NETWORK_TIMEOUT,
+        dx_process::capture::RunOptions {
+            foreground: true,
+            ..Default::default()
+        },
+    );
+    match result {
+        Ok(_) => Ok(true),
+        Err(dx_process::capture::RunError::Failed { stderr, .. }) => {
+            if refused_workflow(&stderr) {
+                return Ok(false);
+            }
+            Err(format!("{label} failed: {}", tail(&stderr)))
+        }
+        Err(other) => Err(format!("{label}: {other}")),
     }
-    let stderr = String::from_utf8_lossy(&output.stderr);
-    if refused_workflow(&stderr) {
-        return Ok(false);
-    }
-    Err(format!(
-        "{} {} failed: {}",
-        tools.git.display(),
-        args.join(" "),
-        tail(&stderr)
-    ))
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -741,22 +738,20 @@ mod tests {
     }
 
     fn plans() -> Vec<GroupPlan> {
-        plan(
-            &[Item {
-                candidate: Candidate {
-                    set: "cargo".into(),
-                    package: "serde".into(),
-                    current: "1.0.0".into(),
-                    latest: "2.0.0".into(),
-                    published: None,
-                    prerelease: false,
-                    repo: None,
-                    tags: None,
-                },
-                registry: Registry::Crates,
-                untagged: false,
-            }]
-        )
+        plan(&[Item {
+            candidate: Candidate {
+                set: "cargo".into(),
+                package: "serde".into(),
+                current: "1.0.0".into(),
+                latest: "2.0.0".into(),
+                published: None,
+                prerelease: false,
+                repo: None,
+                tags: None,
+            },
+            registry: Registry::Crates,
+            untagged: false,
+        }])
     }
 
     fn scope() -> Scope {
@@ -1130,16 +1125,8 @@ mod tests {
     fn an_empty_plan_still_closes_stale() {
         let fx = fixture("[{\"number\":5,\"headRefName\":\"dx-update/npm\"}]");
         let mut step = editing(fx.work.clone(), None);
-        let got = publish(
-            &fx.work,
-            &fx.tools,
-            &[],
-            &scope(),
-            &rules(),
-            &[],
-            &mut step,
-        )
-        .expect("publish");
+        let got =
+            publish(&fx.work, &fx.tools, &[], &scope(), &rules(), &[], &mut step).expect("publish");
         assert_eq!(got[0].result, Ok("closed #5".into()));
     }
 
@@ -1178,16 +1165,7 @@ mod tests {
         let fx = fixture("[{\"number\":7,\"headRefName\":\"dx-update/cargo\"}]");
         let mut step = editing(fx.work.clone(), None);
         let publish_once = |step: &mut dyn FnMut(&[String]) -> Result<(), String>| {
-            publish(
-                &fx.work,
-                &fx.tools,
-                &plans(),
-                &scope(),
-                &rules(),
-                &[],
-                step,
-            )
-            .expect("publish")
+            publish(&fx.work, &fx.tools, &plans(), &scope(), &rules(), &[], step).expect("publish")
         };
         publish_once(&mut step);
         sh(&fx.work, &["commit", "-q", "--allow-empty", "-m", "moved"]);
@@ -1206,16 +1184,7 @@ mod tests {
         let fx = fixture("[]");
         let mut step = editing(fx.work.clone(), None);
         let publish_once = |step: &mut dyn FnMut(&[String]) -> Result<(), String>| {
-            publish(
-                &fx.work,
-                &fx.tools,
-                &plans(),
-                &scope(),
-                &rules(),
-                &[],
-                step,
-            )
-            .expect("publish")
+            publish(&fx.work, &fx.tools, &plans(), &scope(), &rules(), &[], step).expect("publish")
         };
         publish_once(&mut step);
         sh(&fx.origin, &["branch", "-D", "dx-update/cargo"]);
@@ -1450,12 +1419,10 @@ mod tests {
             registry: Registry::Crates,
             untagged: false,
         };
-        plan(
-            &[
-                item("cargo", "serde"),
-                item("github-actions", "actions/checkout"),
-            ]
-        )
+        plan(&[
+            item("cargo", "serde"),
+            item("github-actions", "actions/checkout"),
+        ])
     }
 
     fn two_scope() -> Scope {

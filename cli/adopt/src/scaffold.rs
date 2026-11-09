@@ -271,14 +271,11 @@ impl CiProvider {
         if root.join(".github/workflows/ci.yml").exists() {
             return Self::Github;
         }
-        let gitlab_remote = std::process::Command::new("git")
-            .arg("-C")
-            .arg(root)
-            .args(["remote", "get-url", "origin"])
-            .output()
-            .is_ok_and(|out| {
-                out.status.success() && String::from_utf8_lossy(&out.stdout).contains("gitlab")
-            });
+        let gitlab_remote = dx_process::capture::run_checked(
+            dx_process::capture::git(root).args(["remote", "get-url", "origin"]),
+            dx_process::capture::DEFAULT_TIMEOUT,
+        )
+        .is_ok_and(|out| out.stdout_text().contains("gitlab"));
         if gitlab_remote {
             Self::Gitlab
         } else {
@@ -292,16 +289,12 @@ pub const DEFAULT_BRANCH_FALLBACK: &str = "main";
 /// The repo's default branch: `origin/HEAD`, then `init.defaultBranch`, then `main`.
 pub fn detect_default_branch(root: &Path) -> String {
     let git = |args: &[&str]| -> Option<String> {
-        let out = std::process::Command::new("git")
-            .arg("-C")
-            .arg(root)
-            .args(args)
-            .output()
-            .ok()?;
-        if !out.status.success() {
-            return None;
-        }
-        Some(String::from_utf8_lossy(&out.stdout).trim().to_owned())
+        let out = dx_process::capture::run_checked(
+            dx_process::capture::git(root).args(args),
+            dx_process::capture::DEFAULT_TIMEOUT,
+        )
+        .ok()?;
+        Some(out.stdout_text().trim().to_owned())
     };
     let from_origin = git(&["symbolic-ref", "--short", "refs/remotes/origin/HEAD"])
         .and_then(|name| name.strip_prefix("origin/").map(str::to_owned))
@@ -1271,15 +1264,14 @@ mod tests {
 
     #[test]
     fn init_scaffold_covers_admitted_editors() {
-        let files =
-            super::plan_init_files_full(
-                "demo",
-                "main",
-                &all_families(),
-                &EditorTools::default(),
-                super::CiProvider::Github,
-            )
-                .expect("init plans");
+        let files = super::plan_init_files_full(
+            "demo",
+            "main",
+            &all_families(),
+            &EditorTools::default(),
+            super::CiProvider::Github,
+        )
+        .expect("init plans");
         let settings = files
             .iter()
             .find(|f| f.path == ".vscode/settings.json")
@@ -1611,13 +1603,11 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("dx-adopt-branch-{}", std::process::id()));
         std::fs::create_dir_all(&dir).expect("temp dir");
         let git = |args: &[&str]| {
-            std::process::Command::new("git")
-                .arg("-C")
-                .arg(&dir)
-                .args(args)
-                .output()
-                .map(|o| o.status.success())
-                .unwrap_or(false)
+            dx_process::capture::run_checked(
+                dx_process::capture::git(&dir).args(args),
+                dx_process::capture::DEFAULT_TIMEOUT,
+            )
+            .is_ok()
         };
         if git(&["init", "-q"]) && git(&["config", "init.defaultBranch", "trunk"]) {
             assert_eq!(super::detect_default_branch(&dir), "trunk");
@@ -1636,13 +1626,11 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).expect("temp dir");
         let git = |args: &[&str]| {
-            std::process::Command::new("git")
-                .arg("-C")
-                .arg(&dir)
-                .args(args)
-                .output()
-                .map(|o| o.status.success())
-                .unwrap_or(false)
+            dx_process::capture::run_checked(
+                dx_process::capture::git(&dir).args(args),
+                dx_process::capture::DEFAULT_TIMEOUT,
+            )
+            .is_ok()
         };
         if git(&["init", "-q"])
             && git(&["config", "init.defaultBranch", "trunk"])
@@ -1874,12 +1862,18 @@ mod tests {
             .as_str()
             .expect("url");
         assert!(url.contains(&format!("/v{DX_VERSION}/")), "{url}");
-        assert!(url.ends_with("cli/dx_config/schema/dx.schema.json"), "{url}");
+        assert!(
+            url.ends_with("cli/dx_config/schema/dx.schema.json"),
+            "{url}"
+        );
         let user = r#"{"evenBetterToml.schema.associations": {"mine": "x"}}"#;
         let merged = merge_owned(FileKind::VscodeKeys, user, &settings).expect("merge");
         let merged: serde_json::Value = serde_json::from_str(&merged).expect("json");
         assert_eq!(merged["evenBetterToml.schema.associations"]["mine"], "x");
-        assert_eq!(merged["evenBetterToml.schema.associations"]["/dx\\.toml$"], url);
+        assert_eq!(
+            merged["evenBetterToml.schema.associations"]["/dx\\.toml$"],
+            url
+        );
     }
 
     #[test]
@@ -1953,9 +1947,15 @@ mod tests {
         files.insert(".sh".to_owned());
         let value = editor_settings_value(&files, &EditorTools::default());
         let bin = "${workspaceFolder}/.dx/local/bin";
-        assert_eq!(value["ruff.path"], serde_json::json!([format!("{bin}/ruff")]));
+        assert_eq!(
+            value["ruff.path"],
+            serde_json::json!([format!("{bin}/ruff")])
+        );
         assert_eq!(value["biome.lsp.bin"], format!("{bin}/biome"));
-        assert_eq!(value["shellcheck.executablePath"], format!("{bin}/shellcheck"));
+        assert_eq!(
+            value["shellcheck.executablePath"],
+            format!("{bin}/shellcheck")
+        );
         assert_eq!(value["clangd.path"], format!("{bin}/clangd"));
         assert_eq!(value["eslint.runtime"], format!("{bin}/node"));
         let tools = EditorTools {
@@ -1993,7 +1993,8 @@ mod tests {
             root["eslint.options"]["overrideConfigFile"],
             "${workspaceFolder}/eslint.config.mjs"
         );
-        let gopls: serde_json::Value = serde_json::from_str(super::GOPLS_STANDARD).expect("tier json");
+        let gopls: serde_json::Value =
+            serde_json::from_str(super::GOPLS_STANDARD).expect("tier json");
         for (key, tier) in gopls.as_object().into_iter().flatten() {
             assert_eq!(&root[key.as_str()], tier, "{key}");
         }
@@ -2034,7 +2035,9 @@ mod tests {
             let rel = path.strip_prefix(&base).expect(path);
             assert!(dx_ide::OUTPUTS.contains(&rel), "{path}");
         }
-        let extra = value["python.analysis.extraPaths"][0].as_str().expect("extraPaths");
+        let extra = value["python.analysis.extraPaths"][0]
+            .as_str()
+            .expect("extraPaths");
         let rel = extra.strip_prefix(&base).expect(extra);
         assert!(dx_ide::OUTPUTS.contains(&rel), "{extra}");
         let arg = value["clangd.arguments"][0].as_str().expect("arguments");
