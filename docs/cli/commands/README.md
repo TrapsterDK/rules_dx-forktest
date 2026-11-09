@@ -327,6 +327,7 @@ dx rule that wraps it.
 |  |  | `@rules_dx//d/rules:defs.bzl` | `d_bench` |
 |  |  | `@rules_dx//d/rules:defs.bzl` | `d_fuzz_test` |
 |  |  | `@rules_dx//d/rules:defs.bzl` | `d_quality_srcs` |
+|  |  | `@rules_dx//dart/rules:defs.bzl` | `dart_bench` |
 |  |  | `@rules_dx//dart/rules:defs.bzl` | `dart_binary` |
 |  |  | `@rules_dx//dart/rules:defs.bzl` | `dart_js_binary` |
 |  |  | `@rules_dx//dart/rules:defs.bzl` | `dart_library` |
@@ -482,6 +483,8 @@ dx rule that wraps it.
 |  |  | `@rules_dx//ocaml/rules:defs.bzl` | `toolchain_choice` |
 |  |  | `@rules_dx//ocaml/rules:defs.bzl` | `toolchain_settings` |
 |  |  | `@rules_dx//ocaml/tests/native:defs.bzl` | `sys_cell_test` |
+|  |  | `@rules_dx//perl/rules:defs.bzl` | `perl_bench` |
+|  |  | `@rules_dx//php/rules:defs.bzl` | `php_bench` |
 |  |  | `@rules_dx//php/rules:defs.bzl` | `php_binary` |
 |  |  | `@rules_dx//php/rules:defs.bzl` | `php_library` |
 |  |  | `@rules_dx//php/rules:defs.bzl` | `php_test` |
@@ -516,6 +519,7 @@ dx rule that wraps it.
 |  |  | `@rules_dx//rego/rules:defs.bzl` | `rego_library` |
 |  |  | `@rules_dx//rego/rules:defs.bzl` | `rego_test` |
 |  |  | `@rules_dx//rst/rules:defs.bzl` | `rst_library` |
+|  |  | `@rules_dx//ruby/rules:defs.bzl` | `ruby_bench` |
 |  |  | `@rules_dx//ruby/rules:defs.bzl` | `ruby_coverage_lib_dirs` |
 |  |  | `@rules_dx//rust/rules:defs.bzl` | `rust_bench` |
 |  |  | `@rules_dx//rust/rules:defs.bzl` | `rust_binary` |

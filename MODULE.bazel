@@ -821,7 +821,7 @@ bazel_dep(name = "bazel_features", version = "1.54.1")
 
 # Pinned SimpleCov gems Ruby tests load under `bazel coverage`; consumers need them (#3954).
 ruby_coverage = use_extension("//ruby/coverage:repos.bzl", "ruby_coverage")
-use_repo(ruby_coverage, "dx_ruby_coverage_gems")
+use_repo(ruby_coverage, "dx_ruby_bench_gems", "dx_ruby_coverage_gems")
 
 ruby_tools = use_extension("//ruby/toolchain:repos.bzl", "ruby_tools")
 use_repo(ruby_tools, "dx_sorbet", "rules_ruby")
@@ -1026,7 +1026,11 @@ pub_tools.from_lock(
     lock = "//dart/tools/dart_apitool:pubspec.lock",
     on_version_conflict = "upgrade",
 )
-use_repo(pub_tools, "dart_apitool_deps")
+pub_tools.from_lock(
+    name = "dx_dart_bench_deps",
+    lock = "//dart/rules/bench:pubspec.lock",
+)
+use_repo(pub_tools, "dart_apitool_deps", "dx_dart_bench_deps")
 
 # floor: equals tested; patched, consumers are pinned by the dx include (#5006)
 bazel_dep(name = "rules_julia", version = "0.8.0")
@@ -1227,7 +1231,7 @@ lua_tools = use_extension("//lua/toolchain:repos.bzl", "lua")
 use_repo(lua_tools, "dx_luacov", "dx_luacov_reporter_lcov", "dx_luals")
 
 php = use_extension("//php/toolchain:repos.bzl", "php")
-use_repo(php, "dx_composer", "dx_phpcs", "dx_phpstan", "dx_phpstan_strict_rules", "dx_phpunit", "dx_unused_public", "dx_webmozart_assert")
+use_repo(php, "dx_composer", "dx_phpbench", "dx_phpcs", "dx_phpstan", "dx_phpstan_strict_rules", "dx_phpunit", "dx_unused_public", "dx_webmozart_assert")
 
 haskell = use_extension("//haskell/toolchain:extensions.bzl", "haskell")
 haskell.lock(
