@@ -552,6 +552,8 @@ dx rule that wraps it.
 |  |  | `@rules_dx//tools/docs/components:defs.bzl` | `mdx_doc_shard` |
 |  |  | `@rules_dx//tools/docs/components:defs.bzl` | `svelte_doc_shard` |
 |  |  | `@rules_dx//tools/docs/components:defs.bzl` | `vue_doc_shard` |
+|  |  | `@rules_dx//tools/docs/d:defs.bzl` | `d_doc_shard` |
+|  |  | `@rules_dx//tools/docs/d:defs.bzl` | `d_shard_action` |
 |  |  | `@rules_dx//tools/docs/dart:defs.bzl` | `dart_doc_shard` |
 |  |  | `@rules_dx//tools/docs/dart:defs.bzl` | `dart_shard_action` |
 |  |  | `@rules_dx//tools/docs/dotnet:defs.bzl` | `csharp_doc_shard` |
