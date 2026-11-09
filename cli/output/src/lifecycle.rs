@@ -1724,10 +1724,10 @@ mod tests {
     #[test]
     fn init_plan_event_shape() {
         let mut finding = PlanFindingEvent {
-            kind: "version_raise".to_owned(),
+            kind: "override_conflict".to_owned(),
             subject: "rules_rust".to_owned(),
-            before: "0.60.0".to_owned(),
-            after: "0.75.0".to_owned(),
+            before: "single_version_override 0.1.0".to_owned(),
+            after: "rules_dx floor 0.75.0".to_owned(),
             file: "MODULE.bazel".to_owned(),
             line: 3,
             hint: "h".to_owned(),
