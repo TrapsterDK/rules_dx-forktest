@@ -1144,6 +1144,7 @@ mod tests {
             "tools/dx update --pr",
             "DX_UPDATE_APP_ID",
             "DX_UPDATE_APP_PRIVATE_KEY",
+            "::warning::",
         ] {
             assert!(file.content.contains(want), "missing {want}");
         }
