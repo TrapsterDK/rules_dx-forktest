@@ -83,3 +83,24 @@ fn consumer_template_ships_every_staged_file() {
         assert!(!template.join(forbidden).exists(), "{forbidden}");
     }
 }
+
+#[test]
+fn consumer_template_matches_the_gazelle_fixture() {
+    let template = data("DX_CONSUMER_TEMPLATE");
+    let template = template.parent().expect("template dir");
+    let read = |path: &std::path::Path| std::fs::read(path).expect("read");
+    for (source, dest) in dx_release_tools::cell::CONSUMER_FILES {
+        let staged = read(&template.join(source));
+        let fixtures: &[(&str, &str)] = match dest {
+            "BUILD.bazel" => &[
+                ("DX_CONSUMER_FIXTURE_BUILD_IN", "BUILD.in"),
+                ("DX_CONSUMER_FIXTURE_BUILD_OUT", "BUILD.out"),
+            ],
+            "src/lib.rs" => &[("DX_CONSUMER_FIXTURE_LIB", "src/lib.rs")],
+            other => panic!("no fixture for staged file {other}"),
+        };
+        for (env, name) in fixtures {
+            assert_eq!(staged, read(&data(env)), "{name}");
+        }
+    }
+}
