@@ -90,6 +90,7 @@ impl ProjectedManifest {
             results_complete: Some(self.results_complete),
             run_id: None,
             diagnostics: None,
+            findings: None,
             changes: Some([self.creates(), self.modifies()]),
             effects: if self.is_check {
                 None
@@ -549,6 +550,7 @@ mod tests {
                 results_complete: Some(true),
                 run_id: None,
                 diagnostics: None,
+                findings: None,
                 changes: Some([0, 0]),
                 effects: None,
                 tests: None,
