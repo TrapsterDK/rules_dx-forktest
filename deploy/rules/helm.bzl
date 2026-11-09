@@ -2,19 +2,9 @@
 
 load("//helm/rules:providers.bzl", "HelmChartInfo")
 load(":config.bzl", "DEPLOY_TOOL", "deploy_attrs", "deploy_config", "deployment_budget", "rlocation_path")
-load(":defs.bzl", "dx_deployment")
-load(":oci.bzl", "oci_registry_error", "oci_repository_error")
-load(":validate.bzl", "VERSION_CHARS", "only_chars")
-
-def helm_version_error(version):
-    """Validates one chart release version value."""
-    if type(version) != "string" or version == "":
-        return ("helm_chart_deploy: invalid version '" + str(version) +
-                "': want the Chart.yaml version (for example '1.2.3')")
-    if not only_chars(version, VERSION_CHARS):
-        return ("helm_chart_deploy: invalid version '" + version +
-                "': want only [A-Za-z0-9._+-]")
-    return ""
+load(":deployment.bzl", "dx_deployment")
+load(":validate_helm.bzl", "helm_version_error")
+load(":validate_oci.bzl", "oci_registry_error", "oci_repository_error")
 
 def _helm_config_impl(ctx):
     """Writes the deploy config for one Helm chart deployment."""
@@ -66,7 +56,7 @@ _helm_config = rule(
     },
 )
 
-def helm_chart_deploy(name, chart, registry, version = "", repository = "", helm = None, build_mode = "release", sbom = None, size_budget = "", tags = [], visibility = None, testonly = False, target_compatible_with = []):
+def helm_chart_deploy(name, chart, registry, version = "", repository = "", build_mode = "release", sbom = None, size_budget = "", tags = [], visibility = None, testonly = False, target_compatible_with = []):
     """Packages a helm_chart and pushes it to an OCI registry as a local-first deployment."""
     attrs = deploy_attrs(tags, visibility, testonly, target_compatible_with)
     where = " (in " + native.package_name() + ":" + name + ")"
@@ -87,7 +77,7 @@ def helm_chart_deploy(name, chart, registry, version = "", repository = "", helm
         name = config_target,
         chart = chart,
         deploy_name = name,
-        helm = helm or str(Label("//config:tool_helm")),
+        helm = str(Label("//config:tool_helm")),
         registry = registry,
         repository = repository,
         version = version,

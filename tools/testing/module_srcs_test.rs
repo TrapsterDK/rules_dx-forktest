@@ -16,6 +16,7 @@ const DECLARED: &[&str] = &[
 const ENTRY_POINTS: &[&str] = &[
     "//deploy/rules:archive.bzl",
     "//deploy/rules:defs.bzl",
+    "//deploy/rules:deployment.bzl",
     "//erlang/rules:defs.bzl",
     "//erlang/toolchain:repos.bzl",
     "//qt/rules:defs.bzl",
