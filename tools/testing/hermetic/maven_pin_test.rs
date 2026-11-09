@@ -2,7 +2,18 @@
 //!
 //! Writes the new lock to the undeclared outputs and fails while the committed lock is stale.
 
-use std::path::PathBuf;
+use std::fs::File;
+use std::path::{Path, PathBuf};
+use std::process::Stdio;
+use std::time::{Duration, Instant};
+
+const PIN_DEADLINE: Duration = Duration::from_secs(1800);
+
+fn tail(path: &Path) -> String {
+    let text = std::fs::read_to_string(path).unwrap_or_default();
+    let lines: Vec<&str> = text.lines().collect();
+    lines[lines.len().saturating_sub(200)..].join("\n")
+}
 
 #[test]
 fn committed_maven_lock_matches_a_fresh_pin() {
@@ -21,9 +32,32 @@ fn committed_maven_lock_matches_a_fresh_pin() {
 
     let case = dx_nested::case("cpp_rust_pin");
     hermetic::materialize(&manifest, case.root(), &source, "cc").expect("materializes");
-    let run = case.run(&case.wrapper(), &["run", "@maven//:pin"], &[("REPIN", "1")]);
-    let log = run.combined();
-    assert!(run.status.success(), "{log}");
+    let log_path = case.root().with_extension("pin.log");
+    let log = File::create(&log_path).expect("pin log");
+    let mut command = case.bazel_command(&["run", "--show_progress_rate_limit=5", "@maven//:pin"]);
+    command
+        .env("REPIN", "1")
+        .env("RJE_VERBOSE", "1")
+        .stdout(Stdio::from(log.try_clone().expect("clone log")))
+        .stderr(Stdio::from(log));
+    let mut child = command.spawn().expect("spawn pin");
+    let started = Instant::now();
+    let status = loop {
+        if let Some(status) = child.try_wait().expect("wait pin") {
+            break status;
+        }
+        if started.elapsed() > PIN_DEADLINE {
+            let _ = child.kill();
+            let _ = child.wait();
+            panic!(
+                "pin exceeded {}s; last output:\n{}",
+                PIN_DEADLINE.as_secs(),
+                tail(&log_path)
+            );
+        }
+        std::thread::sleep(Duration::from_secs(5));
+    };
+    assert!(status.success(), "{}", tail(&log_path));
 
     let pinned = dx_testing::read_text(&case.root().join("maven_install.json"));
     if let Ok(out) = std::env::var("TEST_UNDECLARED_OUTPUTS_DIR") {
