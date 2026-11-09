@@ -334,6 +334,8 @@ pub struct Invocation {
     pub bench_compare: Option<String>,
     pub path_only: bool,
     pub agent: bool,
+    /// Stdout is not a terminal.
+    pub piped: bool,
     pub bazel_startup_options: Vec<String>,
 }
 
@@ -352,9 +354,10 @@ impl Invocation {
         self.command == Command::Update && self.targets.len() == 2 && is_version(&self.targets[1])
     }
 
-    /// Bazel UI flags that silence progress output in agent JSON sessions.
+    /// Bazel UI flags that silence progress output in agent JSON sessions and piped runs; `-v` keeps Bazel output.
     pub fn agent_quiet_flags(&self) -> Vec<String> {
-        if self.agent && self.output == OutputMode::Json {
+        let agent_json = self.agent && self.output == OutputMode::Json;
+        if (agent_json || self.piped) && !self.verbose {
             AGENT_QUIET_FLAGS
                 .iter()
                 .map(|flag| (*flag).to_owned())
@@ -364,7 +367,7 @@ impl Invocation {
         }
     }
 
-    /// Bazel options for the run: agent JSON sessions get no progress output.
+    /// Bazel options for the run: agent JSON sessions and piped runs get no progress output.
     pub fn quiet_bazel_options(&self) -> Vec<String> {
         let mut options = self.agent_quiet_flags();
         options.extend(self.bazel_options.iter().cloned());
@@ -743,6 +746,7 @@ mod tests {
             bench_compare: None,
             path_only: false,
             agent: false,
+            piped: false,
             bazel_startup_options: Vec::new(),
         }
     }
@@ -1118,6 +1122,16 @@ mod tests {
     }
 
     #[test]
+    fn piped_runs_are_quiet_unless_verbose() {
+        let mut inv = parsed(&["build"]);
+        assert!(inv.quiet_bazel_options().is_empty());
+        inv.piped = true;
+        assert_eq!(inv.quiet_bazel_options(), quiet_flags());
+        inv.verbose = true;
+        assert!(inv.quiet_bazel_options().is_empty());
+    }
+
+    #[test]
     fn raw_bazel_options_never_carry_agent_quiet_flags() {
         let session = agent(&["build", "--output=json", "--", "--jobs=4"]);
         assert_eq!(session.raw_bazel_options(), ["--jobs=4".to_owned()]);
@@ -1143,6 +1157,20 @@ mod tests {
             parsed(&["build", "--output=json"])
                 .agent_quiet_flags()
                 .is_empty()
+        );
+    }
+
+    #[test]
+    fn piped_requests_carry_quiet_flags_until_verbose() {
+        let mut inv = parsed(&["generate", "--", "--jobs=4"]);
+        inv.piped = true;
+        let mut want = quiet_flags();
+        want.push("--jobs=4".to_owned());
+        assert_eq!(inv.generate_request().expect("generate").bazel_options, want);
+        inv.verbose = true;
+        assert_eq!(
+            inv.generate_request().expect("generate").bazel_options,
+            vec!["--jobs=4".to_owned()]
         );
     }
 
