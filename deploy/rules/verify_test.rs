@@ -885,15 +885,19 @@ fn pypi_native_case() {
     );
 }
 
-fn archiver_imports(members: &[(String, PathBuf)], check: &str) -> std::process::Output {
+fn archiver_imports(
+    members: &[(String, PathBuf)],
+    check: &str,
+    provides: &[&str],
+) -> std::process::Output {
     let out = dx_testing::mkscratch("pypi-imports")
         .expect("scratch imports")
         .join("ok");
     let mut command = std::process::Command::new(data("DX_ARCHIVER"));
-    command
-        .arg("--imports")
-        .arg(out)
-        .args(["--check", check, "--provides", "python3*"]);
+    command.arg("--imports").arg(out).args(["--check", check]);
+    for name in provides {
+        command.args(["--provides", name]);
+    }
     for (name, path) in members {
         command.arg(format!("{name}={}", path.display()));
     }
@@ -946,12 +950,31 @@ fn pypi_native_msvc_case() {
         std::fs::read(&notice).expect("wheel must ship the runtime notice"),
         std::fs::read(data("DX_MSVC_NOTICE")).expect("declared notice must be readable"),
     );
-    let output = archiver_imports(&members, &core(&members));
+    let core = core(&members);
+    let output = archiver_imports(&members, &core, &["python3*"]);
     assert!(
         output.status.success(),
         "{}",
         String::from_utf8_lossy(&output.stderr)
     );
+    let alone: Vec<_> = members
+        .iter()
+        .filter(|(name, _)| *name == core)
+        .cloned()
+        .collect();
+    let output = archiver_imports(&alone, &core, &[]);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    println!("{core} alone, nothing provided:\n{stderr}");
+    assert!(stderr.to_ascii_lowercase().contains("python3"), "{stderr}");
+    let output = archiver_imports(&alone, &core, &["python3*"]);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    println!("{core} without the shipped runtime:\n{stderr}");
+    assert!(!output.status.success(), "{stderr}");
+    assert!(
+        stderr.to_ascii_lowercase().contains("vcruntime140.dll"),
+        "{stderr}"
+    );
+
     let cwd = dx_testing::mkscratch("pypi-native-msvc-cwd").expect("scratch cwd");
     let output = import_from(&target, &cwd);
     assert!(
@@ -963,6 +986,21 @@ fn pypi_native_msvc_case() {
         String::from_utf8_lossy(&output.stdout).trim(),
         "dx-native-probe native"
     );
+    let moved = target.with_file_name(format!(
+        "{}-moved",
+        target
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or("t")
+    ));
+    std::fs::rename(&target, &moved).expect("rename install dir");
+    let output = import_from(&moved, &cwd);
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    check_module(&moved, "dx_native_probe", "dx-native-probe native");
 }
 
 fn readelf_dynamic(library: &Path) -> String {
