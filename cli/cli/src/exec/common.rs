@@ -1439,7 +1439,8 @@ mod tests {
         assert_eq!(code, Err(operational_code()));
         assert_eq!(
             String::from_utf8(err).expect("utf8"),
-            "dx: launch_failed: failed to launch Bazel: fake launch failure\n"
+            "dx: launch_failed: failed to launch Bazel: fake launch failure\n\
+             next: install bazelisk (or bazel) on PATH, using the version pinned in .bazelversion, and run the command again.\n"
         );
     }
 

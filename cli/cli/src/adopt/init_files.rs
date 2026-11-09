@@ -533,6 +533,7 @@ fn refresh(
 pub(super) fn refreshable(root: &Path, file: &InitFile) -> bool {
     root.join(&file.path).exists()
         && file.kind != Kind::Scaffold(FileKind::WriteOnce)
+        && file.kind != Kind::Scaffold(FileKind::Bazelignore)
         && file.path != "MODULE.bazel"
         && file.path != ".dx/pins"
 }
@@ -631,9 +632,9 @@ pub(super) fn drift(root: &Path, files: &[InitFile]) -> Drift {
 
 #[cfg(test)]
 mod tests {
-    use super::plan;
+    use super::{plan, plan_for};
     use crate::adopt::test_support::{drift_of, invocation, run};
-    use dx_plan::args::Agent;
+    use dx_plan::args::{Agent, Ci};
 
     #[test]
     fn init_refuses_when_module_bazel_is_ahead_of_the_binary() {
@@ -802,7 +803,14 @@ mod tests {
         let root = scratch.path();
         std::fs::write(root.join("app.py"), "print(1)\n").expect("source");
         let rows = doc_rows();
-        let files = plan(root, "my_project", true, &Agent::ALL).expect("plan");
+        let mut files = plan(root, "my_project", true, &Agent::ALL).expect("plan");
+        let gitlab =
+            plan_for(root, "my_project", true, &Agent::ALL, Some(Ci::Gitlab)).expect("gitlab plan");
+        for file in gitlab {
+            if !files.iter().any(|planned| planned.path == file.path) {
+                files.push(file);
+            }
+        }
         for file in &files {
             let matching: Vec<&String> = rows
                 .iter()

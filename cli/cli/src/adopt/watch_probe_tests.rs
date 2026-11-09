@@ -269,9 +269,11 @@ fn edits_during_a_slow_command_queue_exactly_one_more_iteration() {
     for name in ["one.rs", "two.rs", "three.rs"] {
         fs::write(probe.workspace.join("src").join(name), "edit").expect("burst edit");
     }
+    probe.until("the queued iteration", |probe| {
+        probe.stdout().contains("iteration 2:")
+    });
     probe.idle(2);
-    let status = probe.stop();
-    assert_eq!(status.code(), Some(130), "{}", probe.stderr());
+    assert_interrupted(probe.stop());
     let log = probe.log();
     assert_eq!(probe.count("start "), 2, "one pending iteration:\n{log}");
     assert!(!starts_before_previous_end(&log), "no overlap:\n{log}");
