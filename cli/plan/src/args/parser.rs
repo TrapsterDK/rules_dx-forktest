@@ -332,13 +332,9 @@ fn parse_inner<S: AsRef<OsStr>>(
         expunge,
         add_missing,
         pr,
-        group,
-        labels,
         automerge,
         min_age,
-        ignore,
         allow_major,
-        prereleases,
         max_prs,
         floor,
         reason,
@@ -541,13 +537,9 @@ fn parse_inner<S: AsRef<OsStr>>(
     }
     if command == Command::Update && !pr {
         let stray = [
-            (group.is_some(), "--group"),
-            (labels.is_some(), "--labels"),
             (automerge.is_some(), "--automerge"),
             (min_age.is_some(), "--min-age"),
-            (!ignore.is_empty(), "--ignore"),
             (allow_major, "--allow-major"),
-            (prereleases, "--prereleases"),
             (max_prs.is_some(), "--max-prs"),
         ];
         if let Some((_, name)) = stray.iter().find(|(set, _)| *set) {
@@ -712,13 +704,9 @@ fn parse_inner<S: AsRef<OsStr>>(
         expunge,
         add_missing,
         pr,
-        group,
-        labels,
         automerge,
         min_age,
-        ignore,
         allow_major,
-        prereleases,
         max_prs,
         floor,
         reason,
