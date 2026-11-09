@@ -554,14 +554,14 @@ register_toolchains(
 )
 
 ansible = use_extension("//ansible:extensions.bzl", "ansible", dev_dependency = True)
-ansible.collections(
+ansible.lock(
     name = "dx_ansible_test_collections",
     lock = "//ansible/tests:fixtures/collections/lock.json",
 )
 use_repo(ansible, "dx_ansible_test_collections")
 
-dx_terraform = use_extension("//terraform:extensions.bzl", "dx_terraform", dev_dependency = True)
-dx_terraform.provider(
+terraform = use_extension("//terraform:extensions.bzl", "terraform", dev_dependency = True)
+terraform.provider(
     name = "null",
     sha256 = {
         "darwin_arm64": "c43723e8cc65bcdf5e0c92581dcbbdcbdcf18b8d2037406a5f2033b1e22de442",
@@ -572,7 +572,7 @@ dx_terraform.provider(
     source = "registry.terraform.io/hashicorp/null",
     version = "3.2.4",
 )
-use_repo(dx_terraform, "dx_terraform_providers")
+use_repo(terraform, "dx_terraform_providers")
 
 # floor: equals tested; forced by rules_dart 0.8.1 MVS (#1783)
 bazel_dep(name = "bazel_lib", version = "3.7.2")
@@ -1131,13 +1131,13 @@ use_repo(cuda, "cuda")
 erlang = use_extension("//erlang/toolchain:repos.bzl", "erlang")
 use_repo(erlang, "dx_elvis", "dx_erlfmt", "dx_otp_windows_arm64", "dx_otp_windows_x86_64", "rules_erlang")
 
-elixir = use_extension("//elixir/toolchain:repos.bzl", "elixir")
+elixir = use_extension("//elixir/toolchain:extensions.bzl", "elixir")
 use_repo(elixir, "dx_credo", "dx_elixir", "rules_elixir")
 
 # needed: @rules_powershell (powershell extension) loads @rules_batch
 bazel_dep(name = "rules_batch", version = "0.1.1")
 
-powershell = use_extension("//powershell/toolchain:repos.bzl", "powershell")
+powershell = use_extension("//powershell/toolchain:extensions.bzl", "powershell")
 use_repo(
     powershell,
     "dx_powershell_toolchains",
@@ -1150,8 +1150,8 @@ use_repo(
     "rules_powershell",
 )
 
-ocaml = use_extension("//ocaml/toolchain:repos.bzl", "ocaml")
-ocaml.packages(
+ocaml = use_extension("//ocaml/toolchain:extensions.bzl", "ocaml")
+ocaml.lock(
     name = "ocaml_app",
     lock = "//ocaml/tests/fixtures/ocaml-app:ocaml_app.opam.locked",
 )
@@ -1196,22 +1196,22 @@ use_repo(lua_tools, "dx_luacov", "dx_luacov_reporter_lcov", "dx_luals")
 php = use_extension("//php/toolchain:repos.bzl", "php")
 use_repo(php, "dx_composer", "dx_phpcs", "dx_phpstan", "dx_phpstan_strict_rules", "dx_phpunit", "dx_unused_public", "dx_webmozart_assert")
 
-haskell = use_extension("//haskell/toolchain:repos.bzl", "haskell")
-haskell.packages(
+haskell = use_extension("//haskell/toolchain:extensions.bzl", "haskell")
+haskell.lock(
     name = "haskell_app_hackage",
-    deps = "//haskell/tests/fixtures/haskell-app/third_party:haskell_deps.json",
+    lock = "//haskell/tests/fixtures/haskell-app/third_party:haskell_deps.json",
 )
-haskell.packages(
+haskell.lock(
     name = "haskell_weeder_hackage",
-    deps = "//haskell/tools/weeder:haskell_deps.json",
+    lock = "//haskell/tools/weeder:haskell_deps.json",
 )
-haskell.packages(
+haskell.lock(
     name = "haskell_exe_hackage",
-    deps = "//haskell/tests/fixtures/hackage-exe:haskell_deps.json",
+    lock = "//haskell/tests/fixtures/hackage-exe:haskell_deps.json",
 )
-haskell.packages(
+haskell.lock(
     name = "haskell_bench_hackage",
-    deps = "//haskell/tests/fixtures/bench:haskell_deps.json",
+    lock = "//haskell/tests/fixtures/bench:haskell_deps.json",
 )
 use_repo(haskell, "dx_ghc_windows_x86_64", "dx_haskell_toolchains", "haskell_app_hackage", "haskell_bench_hackage", "haskell_exe_hackage", "haskell_weeder_hackage", "rules_haskell")
 
@@ -2040,7 +2040,7 @@ register_toolchains(
 
 _android_sdk_extension = use_extension("@rules_android//rules/android_sdk_repository:rule.bzl", "android_sdk_repository_extension", dev_dependency = True)
 
-android_sdk = use_extension("@rules_dx_android//sdk:repos.bzl", "android_sdk", dev_dependency = True)
+android_sdk = use_extension("@rules_dx_android//sdk:extensions.bzl", "android_sdk", dev_dependency = True)
 use_repo(android_sdk, "dx_android_sdk", "dx_androidsdk")
 
 override_repo(
@@ -2056,8 +2056,9 @@ use_repo(
     "remotejdk21_linux_aarch64",
 )
 
-android_sdk_dev = use_extension("@rules_dx_android//sdk:repos.bzl", "android_sdk", dev_dependency = True)
-android_sdk_dev.configure(accept_licenses = ["android-sdk-license"])
+android_sdk_dev = use_extension("@rules_dx_android//sdk:extensions.bzl", "android_sdk", dev_dependency = True)
+android_sdk_dev.license(accept = ["android-sdk-license"])
+android_sdk_dev.configure()
 use_repo(android_sdk_dev, "dx_android_ndk_linux_x86_64")
 
 _web_consumer_repo = use_repo_rule("//javascript/tests/fixtures/web_app:repos.bzl", "web_consumer_repo")
@@ -2377,7 +2378,7 @@ _http_archive(
     urls = ["https://static.crates.io/crates/bitflags/bitflags-2.13.2.crate"],
 )
 
-_psgallery_module = use_repo_rule("//powershell/rules:gallery.bzl", "psgallery_module")
+_psgallery_module = use_repo_rule("//powershell/toolchain:gallery.bzl", "psgallery_module")
 
 _psgallery_module(
     name = "psgallery_pester",
@@ -2672,10 +2673,10 @@ _hub_fixture_repo(
     tool = "taplo",
 )
 
-appimage_tools = use_extension("//appimage:repos.bzl", "appimage_tools")
+appimage_tools = use_extension("//appimage:extensions.bzl", "appimage_tools")
 use_repo(appimage_tools, "dx_appimage_tools")
 
-msix_dev = use_extension("@rules_dx_msix//:repos.bzl", "msix_tools", dev_dependency = True)
+msix_dev = use_extension("@rules_dx_msix//:extensions.bzl", "msix_tools", dev_dependency = True)
 msix_dev.license(accept = ["windows-sdk-buildtools"])
 
 windows_msvc_runtime = use_extension("@windows_support//windows:extensions.bzl", "msvc_runtime")
@@ -2693,7 +2694,7 @@ msvc_dev.license(accept = ["visual-studio-build-tools"])
 cuda_license_dev = use_extension("@rules_dx_cuda//toolchain:repos.bzl", "cuda_license", dev_dependency = True)
 cuda_license_dev.license(accept = ["cuda-eula"])
 
-qt_sdk = use_extension("//qt/sdk:repos.bzl", "qt_sdk", dev_dependency = True)
+qt_sdk = use_extension("//qt/sdk:extensions.bzl", "qt_sdk", dev_dependency = True)
 qt_sdk.configure(modules = [
     "qtdeclarative",
     "qttools",
