@@ -654,7 +654,7 @@ real_aspect_subject(
 
 config_subject(
     name = "fixture_real_asciidoc_no_converter_config_subject",
-    config = "consumer_shared",
+    config = "shared",
     tags = ["manual"],
     target = ":fixture_real_asciidoc_no_converter_subject",
 )
@@ -673,7 +673,7 @@ real_aspect_subject(
 
 config_subject(
     name = "fixture_real_rst_no_converter_config_subject",
-    config = "consumer_shared",
+    config = "shared",
     tags = ["manual"],
     target = ":fixture_real_rst_no_converter_subject",
 )
