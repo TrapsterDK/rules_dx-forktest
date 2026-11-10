@@ -1,6 +1,6 @@
 """Schema tests for the support matrix facts."""
 
-load("//cc/toolchains:pins.bzl", "GCC_VERSION", "LLVM_CLANG_VERSION", "MSVC_CL_BUILD")
+load("//cc/private/toolchains:pins.bzl", "GCC_VERSION", "LLVM_CLANG_VERSION", "MSVC_CL_BUILD")
 load("//core:defs.bzl", "expect_equal", "expect_true", "starlark_test")
 load("//quality:adapters.bzl", "NOT_APPLICABLE", "TYPECHECK_CANDIDATES")
 load("//quality:support.bzl", "SUPPORT_PLATFORMS")
@@ -197,9 +197,9 @@ def support_matrix_facts_tests(name):
                 "compiler identity",
                 {row["name"]: row["identity"] for row in facts["rows"] if row["section"] == "compilers"},
                 {
-                    "cc_gcc": {"compiler": "gcc", "coverage": "gcov", "driver": "gnu", "platform_probes": {"linux_arm64": "//cc/toolchains:identity_gcc_arm64_native"}, "probe": "//cc/toolchains:identity_gcc", "version": GCC_VERSION},
-                    "cc_llvm": {"compiler": "llvm", "coverage": "llvm", "driver": "gnu", "platform_probes": {}, "probe": "//cc/toolchains:identity", "version": LLVM_CLANG_VERSION},
-                    "cc_msvc": {"compiler": "msvc", "coverage": "", "driver": "msvc", "platform_probes": {"windows_arm64": "//cc/toolchains:identity_msvc_arm64_native"}, "probe": "//cc/toolchains:identity_msvc", "version": MSVC_CL_BUILD},
+                    "cc_gcc": {"compiler": "gcc", "coverage": "gcov", "driver": "gnu", "platform_probes": {"linux_arm64": "//cc/private/toolchains:identity_gcc_arm64_native"}, "probe": "//cc/private/toolchains:identity_gcc", "version": GCC_VERSION},
+                    "cc_llvm": {"compiler": "llvm", "coverage": "llvm", "driver": "gnu", "platform_probes": {}, "probe": "//cc/private/toolchains:identity", "version": LLVM_CLANG_VERSION},
+                    "cc_msvc": {"compiler": "msvc", "coverage": "", "driver": "msvc", "platform_probes": {"windows_arm64": "//cc/private/toolchains:identity_msvc_arm64_native"}, "probe": "//cc/private/toolchains:identity_msvc", "version": MSVC_CL_BUILD},
                 },
             ),
             expect_equal(

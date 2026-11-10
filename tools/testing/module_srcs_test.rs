@@ -7,8 +7,8 @@ const DECLARED: &[&str] = &[
     "erlang/private/defs.bzl",
     "erlang/private/toolchain/extensions.bzl",
     "core/wrapper.bzl",
-    "qt/rules/defs.bzl",
-    "qt/sdk/launcher.c",
+    "qt/private/defs.bzl",
+    "qt/private/sdk/launcher.c",
     "quality/pipeline.bzl",
 ];
 
@@ -19,8 +19,8 @@ const ENTRY_POINTS: &[&str] = &[
     "//deploy/private:deployment.bzl",
     "//erlang:defs.bzl",
     "//erlang:extensions.bzl",
-    "//qt/rules:defs.bzl",
-    "//qt/sdk:extensions.bzl",
+    "//qt:defs.bzl",
+    "//qt:extensions.bzl",
 ];
 
 #[test]

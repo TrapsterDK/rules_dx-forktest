@@ -5,7 +5,7 @@ load(":versions.bzl", _RUST_VERSION = "RUST_VERSION")
 RUST_VERSION = _RUST_VERSION
 
 RUST_CRATE_MANIFESTS = [
-    "//cc/context:Cargo.toml",
+    "//cc/private/context:Cargo.toml",
     "//cli/process:Cargo.toml",
     "//cli/apply:Cargo.toml",
     "//cli/atomic_fs:Cargo.toml",
@@ -52,8 +52,8 @@ RUST_CRATE_MANIFESTS = [
     "//deploy/tests/runfiles:Cargo.toml",
     "//deploy/private/release:Cargo.toml",
     "//deploy/private/install:Cargo.toml",
-    "//env/env_shard:Cargo.toml",
-    "//env/stubs:Cargo.toml",
+    "//env/private/env_shard:Cargo.toml",
+    "//env/private/stubs:Cargo.toml",
     "//cli/codegen_shard:Cargo.toml",
     "//cli/generation_result:Cargo.toml",
     "//quality/adapter:Cargo.toml",
@@ -133,11 +133,11 @@ RUST_CRATE_MANIFESTS = [
     "//tools/testing/floor:Cargo.toml",
     "//tools/testing/starters:Cargo.toml",
     "//core/modules:Cargo.toml",
-    "//wasi/testing:Cargo.toml",
+    "//wasi/private/testing:Cargo.toml",
     "//api_spec/private/codegen:Cargo.toml",
-    "//appimage/packer:Cargo.toml",
-    "//qt/rust:Cargo.toml",
+    "//appimage/private/packer:Cargo.toml",
+    "//qt/private/rust:Cargo.toml",
 ]
 
-CRATE_CARGO_LOCK = "//cc/context:Cargo.lock"
+CRATE_CARGO_LOCK = "//cc/private/context:Cargo.lock"
 CRATE_BAZEL_LOCK = "//:cargo-bazel-lock.json"
