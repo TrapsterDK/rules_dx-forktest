@@ -37,14 +37,14 @@ flutter.pub(
 )
 use_repo(flutter, "dx_flutter_deps")
 
-pub = use_extension("@rules_dx//dart:extensions.bzl", "pub")
+pub = use_extension("@rules_dx//dart:pub.bzl", "pub")
 pub.from_lock(
     name = "dx_dart_deps",
     lock = "@rules_dx//third_party/dart:pubspec.lock",
     on_version_conflict = "upgrade",
 )
 
-# Fetching a padded archive guards the pinned bsdtar in @rules_dx//dart:repos.bzl.
+# Fetching a padded archive guards the pinned bsdtar in @rules_dx//dart:pub.bzl.
 pub.from_lock(
     name = "dx_dart_padded_archive",
     lock = "//dart/tests:padded_archive.pubspec.lock",
