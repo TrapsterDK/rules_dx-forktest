@@ -3,7 +3,7 @@
 use dx_nested::Case;
 use dx_testing::serde_json::Value;
 
-const KERNELS_BUILD: &str = r#"load("@rules_dx_cuda//rules:defs.bzl", "cuda_library")
+const KERNELS_BUILD: &str = r#"load("@rules_dx//cuda:defs.bzl", "cuda_library")
 
 cuda_library(
     name = "kernels",
@@ -49,9 +49,7 @@ fn gpu_test_runs_on_the_device_through_a_nested_consumer() {
         &std::env::var("DX_CUDA_FRAGMENT").expect("fragment path"),
     ))
     .replace("@my_dx", "@rules_dx");
-    let family =
-        dx_nested::compose::family_modules(&["cuda".to_owned()], &dx_testing::rules_dx_source());
-    let case = Case::consumer("cuda_gpu", &format!("\n{fragment}{family}"));
+    let case = Case::consumer("cuda_gpu", &format!("\n{fragment}"));
     for entry in std::env::var("DX_CUDA_FILES").expect("files").split(' ') {
         let (src, dest) = entry.split_once('=').expect("src=dest");
         case.write(
@@ -60,16 +58,16 @@ fn gpu_test_runs_on_the_device_through_a_nested_consumer() {
         );
     }
     // The example BUILD loads in-repo helpers, so the consumer gets its own kernels package.
-    case.write("tests/fixtures/cuda-app/kernels/BUILD.bazel", KERNELS_BUILD);
+    case.write("cuda/tests/fixtures/cuda-app/kernels/BUILD.bazel", KERNELS_BUILD);
     // Likewise drop the in-repo corpus load from the gpu package.
-    let gpu = dx_testing::read_text(&case.root().join("tests/fixtures/cuda-app/gpu/BUILD.bazel"));
+    let gpu = dx_testing::read_text(&case.root().join("cuda/tests/fixtures/cuda-app/gpu/BUILD.bazel"));
     case.write(
-        "tests/fixtures/cuda-app/gpu/BUILD.bazel",
+        "cuda/tests/fixtures/cuda-app/gpu/BUILD.bazel",
         &consumer_gpu_build(&gpu),
     );
     let run = case.plain(
         "test",
-        "//tests/fixtures/cuda-app/gpu:gpu_test",
+        "//cuda/tests/fixtures/cuda-app/gpu:gpu_test",
         &["--test_output=all", "--nocache_test_results"],
     );
     let log = run.combined();
@@ -123,7 +121,7 @@ mod tests {
 
     #[test]
     fn the_consumer_gpu_build_drops_the_corpus_rule() {
-        let build = "load(\"a\", \"b\")\nload(\"//quality:fixtures.bzl\", \"real_source_target\")\n\nx()\n\nreal_source_target(\n    name = \"c\",\n)\n";
+        let build = "load(\"a\", \"b\")\nload(\"@rules_dx//quality:fixtures.bzl\", \"real_source_target\")\n\nx()\n\nreal_source_target(\n    name = \"c\",\n)\n";
         assert_eq!(consumer_gpu_build(build), "load(\"a\", \"b\")\n\nx()\n");
     }
 
