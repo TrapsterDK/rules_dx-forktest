@@ -73,7 +73,7 @@ case "{elixir_home}" in
     /*) ABS_ELIXIR_HOME="{elixir_home}" ;;
     *) ABS_ELIXIR_HOME="$PWD/{elixir_home}" ;;
 esac
-export PATH="$ABS_ELIXIR_HOME"/bin:"{erlang_home}"/bin:"$PATH"
+export PATH="$ABS_ELIXIR_HOME"/bin:"{erlang_home}"/bin:/usr/bin:/bin
 if [ -n "{erl_libs_path}" ]; then
     export ERL_LIBS="{erl_libs_path}"
 fi
