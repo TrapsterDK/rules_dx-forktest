@@ -24,8 +24,8 @@
     "windows_x86_64"
   ],
   "pins": [
-    "toolchain/pins.bzl",
-    "toolchain/pins.json"
+    "private/toolchain/pins.bzl",
+    "private/toolchain/pins.json"
   ],
   "entry_points": [
     "ocamllex",
@@ -40,7 +40,8 @@
     "ocaml_binary",
     "ocaml_test",
     "ocaml_fuzz_test",
-    "ocaml_bench"
+    "ocaml_bench",
+    "dx_dune_library"
   ],
   "quality": {
     "bzl": "quality:families/ocaml.bzl",
