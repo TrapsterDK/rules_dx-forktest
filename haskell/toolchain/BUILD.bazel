@@ -55,6 +55,8 @@ alias(
         "directory",
         "exceptions",
         "filepath",
+        "ghc-bignum",
+        "ghc-internal",
         "ghc-prim",
         "ghc_exe",
         "ghc_files",

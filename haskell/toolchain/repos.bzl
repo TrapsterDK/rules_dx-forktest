@@ -87,6 +87,8 @@ COMMON_LIBRARIES = [
     "exceptions",
     "filepath",
     "ghc",
+    "ghc-bignum",
+    "ghc-internal",
     "ghc-prim",
     "hpc",
     "mtl",
