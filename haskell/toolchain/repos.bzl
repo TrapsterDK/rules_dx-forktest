@@ -223,6 +223,10 @@ GHC_DROPPED_PATHS = [
 
 NO_HOST_TOOL = "dx-no-host-tool"
 
+BUNDLED_TOOLS = ["Merge objects command", "windres command"]
+
+MINGW_ROOT = "$topdir/../mingw/"
+
 SETTINGS = {
     "C compiler command": NO_HOST_TOOL,
     "C compiler flags": "",
@@ -264,7 +268,7 @@ haskell_toolchain(
     libdir = [":lib"],
     libraries = toolchain_libraries,
     locale = "{locale}",
-    static_runtime = False,
+    static_runtime = {static_runtime},
     tools = [":bin"],
     version = "{version}",
 )
@@ -375,6 +379,9 @@ def ghc_settings(source):
         key = stripped[2:stripped.index("\"", 2)]
         if key in SETTINGS:
             seen.append(key)
+            if key in BUNDLED_TOOLS and (MINGW_ROOT in source or "\"$tooldir/" in stripped):
+                lines.append(line)
+                continue
             line = line[:line.index("(")] + "(" + repr(key) + ", " + repr(SETTINGS[key]) + ")"
         lines.append(line)
     missing = [key for key in SETTINGS if key not in seen]
@@ -507,6 +514,7 @@ def _ghc_repo_impl(rctx):
         libdir = LIBDIR,
         libraries = result["file_content"],
         locale = cell.locale,
+        static_runtime = cell.exe_suffix == ".exe",
         version = GHC_VERSION,
         version_file = VERSION_FILE,
     ))
