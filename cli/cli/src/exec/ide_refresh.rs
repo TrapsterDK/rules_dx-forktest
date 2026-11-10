@@ -72,25 +72,35 @@ impl BazelBuild<'_> {
 }
 
 impl dx_ide::Runner for BazelBuild<'_> {
-    fn build(&self, labels: &[String]) -> Result<Vec<PathBuf>, String> {
+    fn build(&self, labels: &[String]) -> Result<Vec<PathBuf>, dx_error::DxError> {
         let labels: Vec<String> = labels
             .iter()
             .map(|label| dx_plan::plan::rules_dx_label(label))
             .collect();
         self.build_files(&labels, &[])
+            .map_err(dx_error::DxError::infra)
     }
 
-    fn build_group(&self, labels: &[String], group: &str) -> Result<Vec<PathBuf>, String> {
+    fn build_group(
+        &self,
+        labels: &[String],
+        group: &str,
+    ) -> Result<Vec<PathBuf>, dx_error::DxError> {
         self.build_files(labels, &[format!("--output_groups={group}")])
+            .map_err(dx_error::DxError::infra)
     }
 
-    fn aquery(&self, expr: &str) -> Result<String, String> {
+    fn aquery(&self, expr: &str) -> Result<String, dx_error::DxError> {
         let options = ["--output=jsonproto".to_owned()];
-        self.run(&self.argv("aquery", &options, &[expr.to_owned()])?)
+        let argv = self
+            .argv("aquery", &options, &[expr.to_owned()])
+            .map_err(dx_error::DxError::infra)?;
+        self.run(&argv).map_err(dx_error::DxError::infra)
     }
 
-    fn execution_root(&self) -> Result<PathBuf, String> {
+    fn execution_root(&self) -> Result<PathBuf, dx_error::DxError> {
         self.info("execution_root")
+            .map_err(dx_error::DxError::infra)
     }
 }
 
@@ -99,15 +109,18 @@ pub(crate) fn refresh(
     workspace: &Path,
     query_runner: &dyn QueryRunner,
     startup: &[String],
-) -> Option<String> {
+) -> Option<dx_error::DxError> {
     let bazel = BazelBuild {
         query_runner,
         workspace,
         startup,
     };
     match dx_ide::refresh(workspace, &bazel) {
-        Ok(report) => report.warning(),
-        Err(error) => Some(format!("ide refresh failed: {error}")),
+        Ok(report) => report.warning().map(dx_error::DxError::failure),
+        Err(error) => Some(dx_error::DxError::new(
+            error.kind(),
+            format!("ide refresh failed: {error}"),
+        )),
     }
 }
 
@@ -125,11 +138,12 @@ pub(crate) fn refresh_and_warn(
     out: &mut dyn Write,
     err: &mut dyn Write,
 ) {
-    let Some(message) = refresh(workspace, query_runner, startup) else {
+    let Some(error) = refresh(workspace, query_runner, startup) else {
         return;
     };
+    let message = error.message();
     if output == OutputMode::Json {
-        if emit_built(out, warning_event(&message)).is_ok() {
+        if emit_built(out, warning_event(message)).is_ok() {
             let _ = flush_out(out);
         }
     } else {

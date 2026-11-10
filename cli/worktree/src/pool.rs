@@ -569,25 +569,27 @@ fn busy_file(base: &Path, slot: u32) -> PathBuf {
 pub fn hold_busy(
     workspace: &Path,
     wait: Duration,
-) -> Option<Result<dx_atomic_fs::lease::SharedLease, String>> {
+) -> Option<Result<dx_atomic_fs::lease::SharedLease, dx_error::DxError>> {
     let (dir, record) = lease_for_workspace(workspace)?;
     let base = dir.parent()?;
     Some(
-        dx_atomic_fs::lease::acquire_shared_at(&busy_file(base, record.slot), wait).map_err(
-            |error| match error.kind() {
-                std::io::ErrorKind::WouldBlock => format!(
-                    "slot {} is being switched by dx worktree; run the command again",
-                    record.slot
-                ),
-                _ => format!("cannot lock slot {}: {error}", record.slot),
-            },
-        ),
+        dx_atomic_fs::lease::acquire_shared_at(&busy_file(base, record.slot), wait)
+            .map_err(|error| busy_error(&error, record.slot)),
     )
 }
 
 /// The lease of the slot a directory is in, after resolving links in the path.
 pub fn lease_for_dir(dir: &Path) -> Option<(PathBuf, Record)> {
     lease_for_workspace(&host::resolved(dir))
+}
+
+fn busy_error(error: &std::io::Error, slot: u32) -> dx_error::DxError {
+    match error.kind() {
+        std::io::ErrorKind::WouldBlock => dx_error::DxError::failure(format!(
+            "slot {slot} is being switched by dx worktree; run the command again"
+        )),
+        _ => dx_error::DxError::infra(format!("cannot lock slot {slot}: {error}")),
+    }
 }
 
 /// The slots of the pool whose primary checkout holds `dir`; none when `dir` is not in one.
@@ -692,6 +694,14 @@ mod tests {
         assert!(marker_matches(&marker_bytes(main), main));
         assert!(marker_matches(b"/work/repo-\xff\n", main));
         assert!(!marker_matches(b"/work/repo-\xef\xbf\xbd", main));
+    }
+
+    #[test]
+    fn a_busy_slot_is_a_failure_and_other_lock_errors_are_infra() {
+        let busy = busy_error(&std::io::Error::from(std::io::ErrorKind::WouldBlock), 3);
+        assert_eq!(busy.kind(), dx_error::ErrorKind::Failure);
+        let other = busy_error(&std::io::Error::from(std::io::ErrorKind::PermissionDenied), 3);
+        assert_eq!(other.kind(), dx_error::ErrorKind::Infra);
     }
 
     #[test]
