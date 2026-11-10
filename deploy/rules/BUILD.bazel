@@ -41,6 +41,8 @@ load(":oci.bzl", "oci_deploy")
 load(":oci_tests.bzl", "oci_layout_fixture", "oci_unit_tests")
 load(":octopus.bzl", "octopus_deploy")
 load(":octopus_tests.bzl", "octopus_unit_tests")
+load(":packagist.bzl", "packagist_deploy")
+load(":packagist_tests.bzl", "packagist_unit_tests")
 load(":pub.bzl", "pub_deploy")
 load(":pub_tests.bzl", "pub_config_content_tests", "pub_unit_tests")
 load(":pypi.bzl", "pypi_deploy")
@@ -99,6 +101,8 @@ exports_files([
     "oci_tests.bzl",
     "octopus.bzl",
     "octopus_tests.bzl",
+    "packagist.bzl",
+    "packagist_tests.bzl",
     "pub.bzl",
     "pub_tests.bzl",
     "pypi.bzl",
@@ -131,6 +135,7 @@ exports_files([
     "src/nuget.rs",
     "src/oci.rs",
     "src/octopus.rs",
+    "src/packagist.rs",
     "src/pub_dev.rs",
     "src/pypi.rs",
     "src/registry.rs",
@@ -156,6 +161,7 @@ exports_files([
     "validate_nuget.bzl",
     "validate_oci.bzl",
     "validate_octopus.bzl",
+    "validate_packagist.bzl",
     "validate_pub.bzl",
     "validate_pypi.bzl",
     "validate_resources.bzl",
@@ -194,6 +200,7 @@ rust_library(
         "src/oci_scan.rs",
         "src/oci_tests.rs",
         "src/octopus.rs",
+        "src/packagist.rs",
         "src/pub_dev.rs",
         "src/pypi.rs",
         "src/registry.rs",
@@ -884,6 +891,8 @@ test_suite(
         ":oci_unit",
         ":octopus_analysis",
         ":octopus_unit",
+        ":packagist_analysis",
+        ":packagist_unit",
         ":pub_analysis",
         ":pub_config_content",
         ":pub_unit",
@@ -1852,6 +1861,27 @@ deploy_analysis_test(
 )
 
 genrule(
+    name = "packagist_demo_dir",
+    outs = ["packagist_demo/composer.json"],
+    cmd = "printf '{\"name\": \"acme/demo\"}\\n' > $@",
+)
+
+packagist_deploy(
+    name = "packagist-demo",
+    composer_json = ":packagist_demo_dir",
+    package = "acme/demo",
+    repository_url = "https://github.com/acme/demo",
+)
+
+packagist_unit_tests(name = "packagist_unit")
+
+deploy_analysis_test(
+    name = "packagist_analysis",
+    artifacts = ["//deploy/rules:packagist_demo_dir"],
+    subject = "packagist-demo",
+)
+
+genrule(
     name = "luarocks_demo_rockspec",
     outs = ["luarocks_demo-0.0.0-1.rockspec"],
     cmd = "printf 'package = \"luarocks_demo\"\\nversion = \"0.0.0-1\"\\n' > $@",
@@ -2125,6 +2155,7 @@ real_source_target(
         "validate_nuget.bzl",
         "validate_oci.bzl",
         "validate_octopus.bzl",
+        "validate_packagist.bzl",
         "validate_pub.bzl",
         "validate_pypi.bzl",
         "validate_resources.bzl",

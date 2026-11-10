@@ -28,6 +28,7 @@ mod nuget;
 mod oci;
 mod oci_scan;
 mod octopus;
+mod packagist;
 mod pub_dev;
 mod pypi;
 mod registry;
@@ -55,6 +56,7 @@ pub use nuget::*;
 pub use oci::*;
 pub use oci_scan::{OciChecks, ScanMode};
 pub use octopus::*;
+pub use packagist::*;
 pub use pub_dev::*;
 pub use pypi::*;
 pub use rubygems::*;
@@ -224,6 +226,7 @@ mod tests {
             &NUGET_GATE,
             &hackage::HACKAGE_GATE,
             &luarocks::LUAROCKS_GATE,
+            &packagist::PACKAGIST_GATE,
             &CRATES_GATE,
             &HEX_GATE,
             &RUBYGEMS_GATE,
@@ -808,7 +811,8 @@ mod tests {
         let github: fn(&[String], &str, &str, &[String]) -> i32 = crate::github_main;
         let homebrew: fn(&crate::HomebrewLaunch<'_>, &[String]) -> i32 = crate::homebrew_tap_main;
         let maven: fn(&crate::MavenLaunch<'_>, &[String]) -> i32 = crate::maven_main;
-        let oci: fn(&str, &str, &str, &str, &str, crate::OciChecks, &[String]) -> i32 = crate::oci_main;
+        let oci: fn(&str, &str, &str, &str, &str, crate::OciChecks, &[String]) -> i32 =
+            crate::oci_main;
         let octopus: fn(&crate::OctopusLaunch<'_>, &[String]) -> i32 = crate::octopus_main;
         let npm_deploy: fn(&[String], &str, &str) -> i32 = crate::npm_deploy_main;
         let npm_pack: fn(&[String]) -> i32 = crate::npm_pack_main;
