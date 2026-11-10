@@ -36,7 +36,7 @@ const webScript = "export const x = 1;\n"
 var conformanceRows = map[string]conformanceRow{
 	"astro": {
 		files: map[string]string{"demo.astro": "---\nconst title = \"hello\";\n---\n\n<script>\n" + webScript + "</script>\n\n<div class=\"hello\">hello</div>\n"},
-		kind:  "astro_library", target: "demo", defs: "astro/rules:defs.bzl",
+		kind:  "astro_library", target: "demo", defs: "astro:defs.bzl",
 		symbols: []string{"astro_library"},
 	},
 	"cc": {
@@ -108,7 +108,7 @@ var conformanceRows = map[string]conformanceRow{
 	},
 	"javascript": {
 		files: map[string]string{"demo.js": "export const x = 1;\n"},
-		kind:  "javascript_library", target: "demo", defs: "javascript/rules:defs.bzl",
+		kind:  "javascript_library", target: "demo", defs: "javascript:defs.bzl",
 		symbols:    []string{"javascript_library", "javascript_test", "javascript_binary"},
 		extraLoads: map[string][]string{
 			"@npm//:defs.bzl":                {"npm_link_all_packages"},
@@ -140,7 +140,7 @@ var conformanceRows = map[string]conformanceRow{
 	},
 	"mdx": {
 		files: map[string]string{"demo.mdx": webScript + "\n# Demo\n\nContent.\n"},
-		kind:  "mdx_library", target: "demo", defs: "mdx/rules:defs.bzl",
+		kind:  "mdx_library", target: "demo", defs: "mdx:defs.bzl",
 		symbols: []string{"mdx_library"},
 	},
 	"ownership": {
@@ -175,7 +175,7 @@ var conformanceRows = map[string]conformanceRow{
 		files: map[string]string{"demo.proto": "syntax = \"proto3\";\n"},
 		kind:  "proto_library", target: "demo_proto", defs: "@protobuf//bazel:proto_library.bzl",
 		symbols:    []string{"proto_library"},
-		extraLoads: map[string][]string{"@rules_rust_prost//:defs.bzl": {"rust_prost_library"}, "@rules_dx//typescript/rules:defs.bzl": {"typescript_proto_library"}, "@rules_dx_dotnet//csharp/rules:defs.bzl": {"csharp_proto_library"}, "@grpc-java//:java_grpc_library.bzl": {"java_grpc_library"}, "@grpc//bazel:cc_grpc_library.bzl": {"cc_grpc_library"}, "@protobuf//bazel:cc_proto_library.bzl": {"cc_proto_library"}, "@protobuf//bazel:java_proto_library.bzl": {"java_proto_library"}, "@protobuf//bazel:py_proto_library.bzl": {"py_proto_library"}, "@rules_dx//python/rules:defs.bzl": {"python_grpc_library"}, "@rules_go//proto:def.bzl": {"go_proto_library"}},
+		extraLoads: map[string][]string{"@rules_rust_prost//:defs.bzl": {"rust_prost_library"}, "@rules_dx//typescript:defs.bzl": {"typescript_proto_library"}, "@rules_dx_dotnet//csharp/rules:defs.bzl": {"csharp_proto_library"}, "@grpc-java//:java_grpc_library.bzl": {"java_grpc_library"}, "@grpc//bazel:cc_grpc_library.bzl": {"cc_grpc_library"}, "@protobuf//bazel:cc_proto_library.bzl": {"cc_proto_library"}, "@protobuf//bazel:java_proto_library.bzl": {"java_proto_library"}, "@protobuf//bazel:py_proto_library.bzl": {"py_proto_library"}, "@rules_dx//python/rules:defs.bzl": {"python_grpc_library"}, "@rules_go//proto:def.bzl": {"go_proto_library"}},
 	},
 	"avro": {
 		files: map[string]string{"demo.avdl": "protocol Demo {\n}\n"},
@@ -241,7 +241,7 @@ var conformanceRows = map[string]conformanceRow{
 	},
 	"svelte": {
 		files: map[string]string{"demo.svelte": "<script>\n" + webScript + "</script>\n\n<div>hello</div>\n"},
-		kind:  "svelte_library", target: "demo", defs: "svelte/rules:defs.bzl",
+		kind:  "svelte_library", target: "demo", defs: "svelte:defs.bzl",
 		symbols: []string{"svelte_library"},
 	},
 	"ocaml": {
@@ -256,7 +256,7 @@ var conformanceRows = map[string]conformanceRow{
 	},
 	"typescript": {
 		files: map[string]string{"demo.ts": "export const x = 1;\n", "tsconfig.json": "{}\n"},
-		kind:  "typescript_library", target: "demo", defs: "typescript/rules:defs.bzl",
+		kind:  "typescript_library", target: "demo", defs: "typescript:defs.bzl",
 		symbols:    []string{"typescript_library", "typescript_test", "typescript_binary"},
 		extraLoads: map[string][]string{
 			"@aspect_rules_js//npm:defs.bzl": {"npm_package"},
@@ -266,7 +266,7 @@ var conformanceRows = map[string]conformanceRow{
 	},
 	"vue": {
 		files: map[string]string{"demo.vue": "<template>\n  <div>hello</div>\n</template>\n\n<script>\nexport default {};\n</script>\n"},
-		kind:  "vue_library", target: "demo", defs: "vue/rules:defs.bzl",
+		kind:  "vue_library", target: "demo", defs: "vue:defs.bzl",
 		symbols: []string{"vue_library"},
 	},
 	"zig": {

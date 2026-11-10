@@ -14,7 +14,7 @@ TAXONOMY = {
         classes = ["asciidoc"],
     ),
     "astro": struct(
-        owner = "//astro/rules:defs.bzl",
+        owner = "//astro:defs.bzl",
         classes = ["astro"],
     ),
     "avro": struct(
@@ -50,7 +50,7 @@ TAXONOMY = {
         classes = ["csharp"],
     ),
     "css": struct(
-        owner = "//javascript/rules:defs.bzl",
+        owner = "//javascript:defs.bzl",
         classes = ["css", "less", "scss"],
     ),
     "cuda": struct(
@@ -106,7 +106,7 @@ TAXONOMY = {
         classes = ["go_module"],
     ),
     "graphql": struct(
-        owner = "//javascript/rules:defs.bzl",
+        owner = "//javascript:defs.bzl",
         classes = ["graphql"],
     ),
     "haskell": struct(
@@ -118,7 +118,7 @@ TAXONOMY = {
         classes = ["helm"],
     ),
     "html": struct(
-        owner = "//javascript/rules:defs.bzl",
+        owner = "//javascript:defs.bzl",
         classes = ["html"],
     ),
     "html_template": struct(
@@ -130,7 +130,7 @@ TAXONOMY = {
         classes = ["java"],
     ),
     "javascript": struct(
-        owner = "//javascript/rules:defs.bzl",
+        owner = "//javascript:defs.bzl",
         classes = ["javascript", "jsx"],
     ),
     "json": struct(
@@ -174,7 +174,7 @@ TAXONOMY = {
         classes = ["markdown"],
     ),
     "mdx": struct(
-        owner = "//mdx/rules:defs.bzl",
+        owner = "//mdx:defs.bzl",
         classes = ["mdx"],
     ),
     "nix": struct(
@@ -250,7 +250,7 @@ TAXONOMY = {
         classes = ["starlark"],
     ),
     "svelte": struct(
-        owner = "//svelte/rules:defs.bzl",
+        owner = "//svelte:defs.bzl",
         classes = ["svelte"],
     ),
     "swift": struct(
@@ -274,7 +274,7 @@ TAXONOMY = {
         classes = ["toml"],
     ),
     "typescript": struct(
-        owner = "//typescript/rules:defs.bzl",
+        owner = "//typescript:defs.bzl",
         classes = ["tsx", "typescript"],
     ),
     "typst": struct(
@@ -282,7 +282,7 @@ TAXONOMY = {
         classes = ["typst"],
     ),
     "vue": struct(
-        owner = "//vue/rules:defs.bzl",
+        owner = "//vue:defs.bzl",
         classes = ["vue"],
     ),
     "xml": struct(

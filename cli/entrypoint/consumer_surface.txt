@@ -1,6 +1,7 @@
 ansible/rules:defs.bzl
 api_spec/rules:defs.bzl
 appimage:defs.bzl
+astro:defs.bzl
 bicep/rules:defs.bzl
 cc/rules:defs.bzl
 cloudformation/rules:defs.bzl
@@ -26,14 +27,14 @@ erlang/rules:defs.bzl
 go/rules:defs.bzl
 haskell/rules:defs.bzl
 java/rules:defs.bzl
-javascript/rules:defs.bzl
-javascript/rules:web.bzl
+javascript:defs.bzl
 julia/rules:defs.bzl
 kotlin/rules:defs.bzl
 kubernetes/rules:defs.bzl
 libs/web_server:server.bzl
 lua/rules:defs.bzl
 make/rules:defs.bzl
+mdx:defs.bzl
 perl/rules:defs.bzl
 php/rules:defs.bzl
 powershell/rules:defs.bzl
@@ -95,6 +96,7 @@ ruby/rules:defs.bzl
 rust/rules:defs.bzl
 scala/rules:defs.bzl
 sql/rules:defs.bzl
+svelte:defs.bzl
 terraform/rules:defs.bzl
 tools/docs/d:defs.bzl
 tools/docs/dart:defs.bzl
@@ -111,6 +113,6 @@ tools/docs/swift:defs.bzl
 tools/docs/typescript:defs.bzl
 tools/docs/zig:defs.bzl
 tools/docs:aspect.bzl
-typescript/rules:defs.bzl
-vue/rules:defs.bzl
+typescript:defs.bzl
+vue:defs.bzl
 zig/rules:defs.bzl
