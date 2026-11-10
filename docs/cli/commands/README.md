@@ -244,7 +244,7 @@ Language rules:
 - `@rules_dx//perl/rules:defs.bzl`: Perl.
 - `@rules_dx//php/rules:defs.bzl`: PHP.
 - `@rules_dx//powershell/rules:defs.bzl`: PowerShell.
-- `@rules_dx//python/rules:defs.bzl`: Python.
+- `@rules_dx//python:defs.bzl`: Python.
 - `@rules_dx//qt/rules:defs.bzl`: Qt.
 - `@rules_dx//qt/rules:rust.bzl`: Rust libraries for Qt.
 - `@rules_dx//quality/rules:defs.bzl`: CUE, Gherkin, HTML templates, Jsonnet, Jupyter, LaTeX, Nix, Pkl, Typst, XML, YAML.
@@ -295,9 +295,9 @@ dx rule that wraps it.
 | `@rules_kotlin//kotlin:jvm.bzl` | `kt_jvm_binary`, `kt_jvm_library`, `kt_jvm_test` | `@rules_dx//kotlin:defs.bzl` | `kotlin_binary`, `kotlin_library`, `kotlin_test` |
 | `@rules_perl//perl:defs.bzl` | `perl_binary`, `perl_library`, `perl_test` | `@rules_dx//perl/rules:defs.bzl` | `perl_binary`, `perl_library`, `perl_test` |
 | `@rules_powershell//powershell:defs.bzl` | `pwsh_binary`, `pwsh_library`, `pwsh_test` | `@rules_dx//powershell/rules:defs.bzl` | `powershell_binary`, `powershell_library`, `powershell_test` |
-| `@rules_py//py:defs.bzl` | `py_binary` | `@rules_dx//python/rules:defs.bzl` | `python_binary` |
-| `@rules_py//py:defs.bzl` | `py_library` | `@rules_dx//python/rules:defs.bzl` | `python_library` |
-| `@rules_py//py:defs.bzl` | `py_test`, `py_pytest_test` | `@rules_dx//python/rules:defs.bzl` | `python_test` |
+| `@rules_py//py:defs.bzl` | `py_binary` | `@rules_dx//python:defs.bzl` | `python_binary` |
+| `@rules_py//py:defs.bzl` | `py_library` | `@rules_dx//python:defs.bzl` | `python_library` |
+| `@rules_py//py:defs.bzl` | `py_test`, `py_pytest_test` | `@rules_dx//python:defs.bzl` | `python_test` |
 | `@rules_ruby//ruby:defs.bzl` | `rb_binary`, `rb_library`, `rb_test` | `@rules_dx//ruby/rules:defs.bzl` | `ruby_binary`, `ruby_library`, `ruby_test` |
 | `@rules_rust//rust:defs.bzl` | `rust_binary`, `rust_library`, `rust_proc_macro`, `rust_shared_library`, `rust_static_library`, `rust_test` | `@rules_dx//rust/rules:defs.bzl` | same names |
 | `@rules_scala//scala:scala.bzl` | `scala_binary`, `scala_library`, `scala_test` | `@rules_dx//scala:defs.bzl` | `scala_binary`, `scala_library`, `scala_test` |
@@ -341,12 +341,14 @@ dx rule that wraps it.
 |  |  | `@rules_dx//dart/rules:defs.bzl` | `dart_wasm_binary` |
 |  |  | `@rules_dx//deploy/tests/cross:defs.bzl` | `cross_deployment` |
 |  |  | `@rules_dx//dockerfile/rules:defs.bzl` | `dockerfile_library` |
-|  |  | `@rules_dx//elixir:defs.bzl` | `app_sources` |
-|  |  | `@rules_dx//elixir:defs.bzl` | `cover_sources` |
-|  |  | `@rules_dx//elixir:defs.bzl` | `elixir_bench` |
-|  |  | `@rules_dx//elixir:defs.bzl` | `escript_headers` |
-|  |  | `@rules_dx//elixir:defs.bzl` | `helper_first` |
-|  |  | `@rules_dx//elixir:defs.bzl` | `nif_priv` |
+|  |  | `@rules_dx//elixir/private:defs.bzl` | `app_sources` |
+|  |  | `@rules_dx//elixir/private:defs.bzl` | `cover_sources` |
+|  |  | `@rules_dx//elixir/private:defs.bzl` | `elixir_app` |
+|  |  | `@rules_dx//elixir/private:defs.bzl` | `elixir_bench` |
+|  |  | `@rules_dx//elixir/private:defs.bzl` | `elixir_test` |
+|  |  | `@rules_dx//elixir/private:defs.bzl` | `escript_headers` |
+|  |  | `@rules_dx//elixir/private:defs.bzl` | `helper_first` |
+|  |  | `@rules_dx//elixir/private:defs.bzl` | `nif_priv` |
 |  |  | `@rules_dx//env:defs.bzl` | `env_host_filename` |
 |  |  | `@rules_dx//env:defs.bzl` | `env_tool_record` |
 |  |  | `@rules_dx//env:defs.bzl` | `env_tree_metadata` |
@@ -354,21 +356,27 @@ dx rule that wraps it.
 |  |  | `@rules_dx//env:defs.bzl` | `environment_metadata` |
 |  |  | `@rules_dx//env:defs.bzl` | `environment_tool` |
 |  |  | `@rules_dx//env:defs.bzl` | `environment_tree` |
-|  |  | `@rules_dx//erlang:defs.bzl` | `app_sources` |
-|  |  | `@rules_dx//erlang:defs.bzl` | `ct_run_args` |
-|  |  | `@rules_dx//erlang:defs.bzl` | `ct_suite_source` |
-|  |  | `@rules_dx//erlang:defs.bzl` | `erlang_bench` |
-|  |  | `@rules_dx//erlang:defs.bzl` | `erlang_nif` |
-|  |  | `@rules_dx//erlang:defs.bzl` | `erlang_release` |
-|  |  | `@rules_dx//erlang:defs.bzl` | `escript_nif_message` |
-|  |  | `@rules_dx//erlang:defs.bzl` | `lcov_apps_dirs` |
-|  |  | `@rules_dx//erlang:defs.bzl` | `native_priv_files` |
-|  |  | `@rules_dx//erlang:defs.bzl` | `nif_linkopt_cases` |
-|  |  | `@rules_dx//erlang:defs.bzl` | `nif_priv_path` |
-|  |  | `@rules_dx//erlang:defs.bzl` | `otp_launch_descriptor` |
-|  |  | `@rules_dx//erlang:defs.bzl` | `otp_launcher_text` |
-|  |  | `@rules_dx//erlang:defs.bzl` | `otp_tool_binary_impl` |
-|  |  | `@rules_dx//erlang:defs.bzl` | `runfiles_path` |
+|  |  | `@rules_dx//erlang/private:defs.bzl` | `app_sources` |
+|  |  | `@rules_dx//erlang/private:defs.bzl` | `ct_run_args` |
+|  |  | `@rules_dx//erlang/private:defs.bzl` | `ct_suite_source` |
+|  |  | `@rules_dx//erlang/private:defs.bzl` | `erlang_app` |
+|  |  | `@rules_dx//erlang/private:defs.bzl` | `erlang_bench` |
+|  |  | `@rules_dx//erlang/private:defs.bzl` | `erlang_bytecode` |
+|  |  | `@rules_dx//erlang/private:defs.bzl` | `erlang_ct_suite_test` |
+|  |  | `@rules_dx//erlang/private:defs.bzl` | `erlang_escript_archive` |
+|  |  | `@rules_dx//erlang/private:defs.bzl` | `erlang_eunit_test` |
+|  |  | `@rules_dx//erlang/private:defs.bzl` | `erlang_nif` |
+|  |  | `@rules_dx//erlang/private:defs.bzl` | `erlang_release` |
+|  |  | `@rules_dx//erlang/private:defs.bzl` | `erlang_test_app` |
+|  |  | `@rules_dx//erlang/private:defs.bzl` | `escript_nif_message` |
+|  |  | `@rules_dx//erlang/private:defs.bzl` | `lcov_apps_dirs` |
+|  |  | `@rules_dx//erlang/private:defs.bzl` | `native_priv_files` |
+|  |  | `@rules_dx//erlang/private:defs.bzl` | `nif_linkopt_cases` |
+|  |  | `@rules_dx//erlang/private:defs.bzl` | `nif_priv_path` |
+|  |  | `@rules_dx//erlang/private:defs.bzl` | `otp_launch_descriptor` |
+|  |  | `@rules_dx//erlang/private:defs.bzl` | `otp_launcher_text` |
+|  |  | `@rules_dx//erlang/private:defs.bzl` | `otp_tool_binary_impl` |
+|  |  | `@rules_dx//erlang/private:defs.bzl` | `runfiles_path` |
 |  |  | `@rules_dx_android//packaging:defs.bzl` | `abi_transition_settings` |
 |  |  | `@rules_dx_android//packaging:defs.bzl` | `abis_for_platforms` |
 |  |  | `@rules_dx_android//packaging:defs.bzl` | `android_adb_install` |
@@ -511,12 +519,15 @@ dx rule that wraps it.
 |  |  | `@rules_dx//php/rules:defs.bzl` | `php_binary` |
 |  |  | `@rules_dx//php/rules:defs.bzl` | `php_library` |
 |  |  | `@rules_dx//php/rules:defs.bzl` | `php_test` |
-|  |  | `@rules_dx//python/rules:defs.bzl` | `python_bench` |
-|  |  | `@rules_dx//python/rules:defs.bzl` | `python_fuzz_test` |
-|  |  | `@rules_dx//python/rules:defs.bzl` | `python_grpc_library` |
-|  |  | `@rules_dx//python/rules:defs.bzl` | `python_main` |
-|  |  | `@rules_dx//python/rules:defs.bzl` | `python_main_rejection` |
-|  |  | `@rules_dx//python/rules:defs.bzl` | `python_test_rejection` |
+|  |  | `@rules_dx//python/private:defs.bzl` | `python_bench` |
+|  |  | `@rules_dx//python/private:defs.bzl` | `python_binary` |
+|  |  | `@rules_dx//python/private:defs.bzl` | `python_fuzz_test` |
+|  |  | `@rules_dx//python/private:defs.bzl` | `python_grpc_library` |
+|  |  | `@rules_dx//python/private:defs.bzl` | `python_library` |
+|  |  | `@rules_dx//python/private:defs.bzl` | `python_main` |
+|  |  | `@rules_dx//python/private:defs.bzl` | `python_main_rejection` |
+|  |  | `@rules_dx//python/private:defs.bzl` | `python_test` |
+|  |  | `@rules_dx//python/private:defs.bzl` | `python_test_rejection` |
 |  |  | `@rules_dx//qt/rules:defs.bzl` | `qt_cc_binary` |
 |  |  | `@rules_dx//qt/rules:defs.bzl` | `qt_cc_library` |
 |  |  | `@rules_dx//qt/rules:defs.bzl` | `qt_cc_test` |
