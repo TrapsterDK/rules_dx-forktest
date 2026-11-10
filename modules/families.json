@@ -237,6 +237,12 @@
         "real_ruby_lint_probe_aspect",
         "real_ruby_typecheck_aspect",
         "real_ruby_typecheck_probe_aspect",
+        "real_rust_format_aspect",
+        "real_rust_format_probe_aspect",
+        "real_rust_lint_aspect",
+        "real_rust_lint_probe_aspect",
+        "real_rust_typecheck_aspect",
+        "real_rust_typecheck_probe_aspect",
         "real_scala_format_aspect",
         "real_scala_lint_aspect",
         "real_shell_format_aspect",
@@ -493,6 +499,7 @@
         ".rb",
         ".rbs",
         ".rego",
+        ".rs",
         ".rst",
         ".scala",
         ".sh",
@@ -780,47 +787,6 @@
       "toolchains": [],
       "module": "rules_dx_powershell",
       "path": "families/powershell"
-    },
-    "rust": {
-      "aspects": [
-        "real_rust_format_aspect",
-        "real_rust_format_probe_aspect",
-        "real_rust_lint_aspect",
-        "real_rust_lint_probe_aspect",
-        "real_rust_typecheck_aspect",
-        "real_rust_typecheck_probe_aspect"
-      ],
-      "bazel_deps": [
-        "bazel_skylib",
-        "platforms",
-        "rules_cc",
-        "rules_dx",
-        "rules_proto",
-        "rules_rust",
-        "rules_rust_prost",
-        "rules_rust_wasm_bindgen",
-        "rules_shell"
-      ],
-      "dirs": [
-        "bcr_test_module",
-        "rust",
-        "third_party"
-      ],
-      "extensions": [
-        "@rules_rust//crate_universe:extensions.bzl%crate"
-      ],
-      "file_extensions": [
-        ".rs"
-      ],
-      "gazelle": [],
-      "repo_rules": [
-        "//rust/tests/fixtures/consumer_abi:repos.bzl%consumer_abi_repo",
-        "//rust/tests/fixtures/consumer_hub:repos.bzl%consumer_hub_repo",
-        "//rust/tests/fixtures/consumer_native:repos.bzl%consumer_native_repo"
-      ],
-      "toolchains": [],
-      "module": "rules_dx_rust",
-      "path": "families/rust"
     },
     "swift": {
       "aspects": [
