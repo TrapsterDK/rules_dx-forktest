@@ -1,17 +1,69 @@
+load("@crates//:crates.bzl", "aliases", "all_crate_deps")
 load("//quality:fixtures.bzl", "real_source_target")
+load("//rust:defs.bzl", "rust_binary")
 
 package(default_visibility = ["//:__subpackages__"])
+
+exports_files([
+    "README.md",
+    "defs.bzl",
+    "verify_test.rs",
+])
+
+platform(
+    name = "linux_amd64",
+    constraint_values = [
+        "@platforms//cpu:x86_64",
+        "@platforms//os:linux",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+platform(
+    name = "linux_arm64",
+    constraint_values = [
+        "@platforms//cpu:arm64",
+        "@platforms//os:linux",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+# keep
+rust_binary(
+    name = "bootstrap_offline",
+    srcs = ["bootstrap_offline.rs"],
+    aliases = aliases(
+        package_name = "deploy/private/offline/dx_bootstrap",
+        normal = True,
+    ),
+    crate_name = "bootstrap_offline",
+    crate_root = "bootstrap_offline.rs",
+    visibility = ["//visibility:public"],
+    deps = all_crate_deps(
+        package_name = "deploy/private/offline/dx_bootstrap",
+        normal = True,
+    ) + ["//deploy/private/offline/bootstrap:dx_bootstrap"],
+)
 
 filegroup(
     name = "module_srcs",
     srcs = [
         "//:module_srcs",
-        "//deploy/rules:module_srcs",
+        "//deploy/private:module_srcs",
     ],
 )
 
 real_source_target(
     name = "corpus_starlark",
-    starlark_srcs = ["BUILD.bazel"],
+    starlark_srcs = [
+        "BUILD.bazel",
+        "defs.bzl",
+    ],
+    tags = ["corpus"],
+)
+
+real_source_target(
+    name = "corpus_markdown",
+    markdown_srcs = ["README.md"],
     tags = ["corpus"],
 )

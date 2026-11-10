@@ -1,0 +1,9 @@
+[package]
+license = "Apache-2.0"
+name = "dx_bootstrap"
+version = "0.0.0"
+edition = "2024"
+
+[lib]
+name = "dx_bootstrap"
+path = "src/lib.rs"
