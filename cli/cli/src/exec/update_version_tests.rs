@@ -1038,6 +1038,25 @@ fn unreadable_and_non_utf8_manifests_fail_without_refresh() {
 }
 
 #[test]
+fn unreadable_bazelversion_is_infra() {
+    let harness = Harness::new("update-bazelversion-dir");
+    std::fs::create_dir(harness.workspace.join(".bazelversion")).expect("directory");
+    let (code, out, err) = harness.run(&[
+        "update",
+        "bazel:.bazelversion",
+        "9.3.0",
+        "--output=json",
+        "--apply",
+    ]);
+    assert_eq!(code, 3, "{out}{err}");
+    let events: Vec<serde_json::Value> = out
+        .lines()
+        .map(|line| serde_json::from_str(line).expect("event"))
+        .collect();
+    assert_eq!(events.last().expect("finished")["exit_code"], 3);
+}
+
+#[test]
 fn frozen_widen_needed_fails_before_any_manifest_write() {
     {
         let (selector, version, path, before) = (
@@ -1289,7 +1308,7 @@ fn gha_tag_fetch_error_and_offline_resolve_nothing() {
     let (code, message) =
         resolve_gha_tag_request(&tag_request(), None, false, &failing).expect_err("error");
     assert_eq!(code, CODE_UPDATE_WIDEN_FAILED);
-    assert!(message.contains("HTTP 404"), "{message}");
+    assert!(message.message().contains("HTTP 404"), "{message}");
     let calls = std::cell::Cell::new(0);
     let counting = |_: &str| {
         calls.set(calls.get() + 1);
